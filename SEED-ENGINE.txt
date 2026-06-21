@@ -1,5 +1,7 @@
-import React, { useMemo } from "react";
+// src/components/ProgressiveAlignedEquation.tsx
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import katex from "katex";
+import "katex/dist/katex.min.css"; 
 
 /* ============================================================
    TypeScript Interfaces & Fused AST Types
@@ -17,9 +19,8 @@ export type ASTNode = TextNode | FixedNode | CommandNode | ScriptedNode | GroupN
 interface RenderResult { rendered: string; used: number; }
 
 export interface ProgressiveAlignedEquationProps {
-  equationString: string;
-  revealCount: number;
   displayMode?: "block" | "inline";
+  equationString?: string;
 }
 
 /* ============================================================
@@ -32,7 +33,7 @@ const commandSignatures: Record<string, number> = {
   sqrt: 1, mathbf: 1, mathit: 1, mathrm: 1, mathbb: 1, mathcal: 1, boldsymbol: 1,
   mathscr: 1, mathfrak: 1, mathsf: 1, mathtt: 1,
   hat: 1, vec: 1, tilde: 1, bar: 1, overline: 1, underline: 1,
-  underbrace: 1, overbrace: 1, check: 1, breve: 1, acute: 1, grave: 1,
+  underbrace: 1, overbrace: 1, check: 1, breve: 1, acute: 1, grave: 1, 
   ddot: 1, mathring: 1, overrightarrow: 1,
   text: 1, operatorname: 1, hspace: 1, vspace: 1,
   sum: 0, prod: 0, int: 0, lim: 0
@@ -46,16 +47,16 @@ const spacingCommands = new Set<string>(["quad", "qquad", ",", ";", ":", "!", " 
 /* ============================================================
    Context-Aware Splitter & Parsers
    ============================================================ */
-export function smartSplitLines(equation: string): string[] {
+function smartSplitLines(equation: string): string[] {
   const lines: string[] = [];
   let currentLine = "", depth = 0, envDepth = 0, lrDepth = 0, i = 0;
   while (i < equation.length) {
-    if (equation.startsWith("\\begin{", i)) { envDepth++; currentLine += "\\begin{"; i += 7; }
-    else if (equation.startsWith("\\end{", i)) { envDepth = Math.max(0, envDepth - 1); currentLine += "\\end{"; i += 5; }
-    else if (equation.startsWith("\\left", i)) { lrDepth++; currentLine += "\\left"; i += 5; }
-    else if (equation.startsWith("\\right", i)) { lrDepth = Math.max(0, lrDepth - 1); currentLine += "\\right"; i += 6; }
-    else if (equation[i] === "{") { depth++; currentLine += "{"; i++; }
-    else if (equation[i] === "}") { depth = Math.max(0, depth - 1); currentLine += "}"; i++; }
+    if (equation.startsWith("\\begin{", i)) { envDepth++; currentLine += "\\begin{"; i += 7; } 
+    else if (equation.startsWith("\\end{", i)) { envDepth = Math.max(0, envDepth - 1); currentLine += "\\end{"; i += 5; } 
+    else if (equation.startsWith("\\left", i)) { lrDepth++; currentLine += "\\left"; i += 5; } 
+    else if (equation.startsWith("\\right", i)) { lrDepth = Math.max(0, lrDepth - 1); currentLine += "\\right"; i += 6; } 
+    else if (equation[i] === "{") { depth++; currentLine += "{"; i++; } 
+    else if (equation[i] === "}") { depth = Math.max(0, depth - 1); currentLine += "}"; i++; } 
     else if (depth === 0 && envDepth === 0 && lrDepth === 0 && equation.startsWith("\\\\", i)) {
       lines.push(currentLine.trim()); currentLine = ""; i += 2;
     } else if (equation[i] === "\\") {
@@ -68,12 +69,12 @@ export function smartSplitLines(equation: string): string[] {
 }
 
 export function parseGroup(equation: string, index: number): [string, number] {
-  let depth = 1, content = ""; index++;
+  let depth = 1, content = ""; index++; 
   while (index < equation.length && depth > 0) {
     const ch = equation[index++];
     if (ch === "\\") { content += ch; if (index < equation.length) content += equation[index++]; continue; }
-    if (ch === "{") { depth++; content += ch; }
-    else if (ch === "}") { depth--; if (depth > 0) content += ch; }
+    if (ch === "{") { depth++; content += ch; } 
+    else if (ch === "}") { depth--; if (depth > 0) content += ch; } 
     else { content += ch; }
   }
   return [content, index];
@@ -99,10 +100,10 @@ function parseLeftRight(equation: string, index: number): [ASTNode, number] {
   const [children, mid2] = parseEquationRecursive(equation, index, true);
   index = mid2;
   while (index < equation.length && /\s/.test(equation[index] || "")) index++;
-
-  if (!equation.startsWith("\\right", index)) return [{ type: "fixed", text: leftDelim, weight: 1 }, index];
-
-  index += 6;
+  
+  if (!equation.startsWith("\\right", index)) return [{ type: "fixed", text: leftDelim, weight: 1 }, index]; 
+  
+  index += 6; 
   const [rightDelim, endIdx] = parseDelimiter(equation, index);
   return [{ type: "leftright", left: leftDelim, content: children, right: rightDelim }, endIdx];
 }
@@ -138,16 +139,16 @@ export function parseEquationRecursive(equation: string, index: number = 0, stop
     const ch = equation[index];
     if (ch === "\\") {
       index++; let cmd = "";
-      if (/[A-Za-z]/.test(equation[index] || "")) { while (index < equation.length && /[A-Za-z]/.test(equation[index] || "")) cmd += equation[index++]; }
-      else if (index < equation.length) cmd = equation[index++];
+      if (/[A-Za-z]/.test(equation[index] || "")) { while (index < equation.length && /[A-Za-z]/.test(equation[index] || "")) cmd += equation[index++]; } 
+      else if (index < equation.length) cmd = equation[index++]; 
 
-      if (cmd === "\\") nodes.push({ type: "fixed", text: "\\\\", weight: 0 });
-      else if (cmd === "left") { const [node, nxt] = parseLeftRight(equation, index); nodes.push(node); index = nxt; }
+      if (cmd === "\\") nodes.push({ type: "fixed", text: "\\\\", weight: 0 }); 
+      else if (cmd === "left") { const [node, nxt] = parseLeftRight(equation, index); nodes.push(node); index = nxt; } 
       else if (cmd === "begin") {
         while (index < equation.length && /\s/.test(equation[index] || "")) index++;
         let env = "";
         if (equation[index] === "{") { const [g, nxt] = parseGroup(equation, index); env = g; index = nxt; }
-
+        
         let envConfig: string | null = null;
         if (["array", "tabular", "alignat", "alignat*"].includes(env)) {
           while (index < equation.length && /\s/.test(equation[index] || "")) index++;
@@ -156,26 +157,26 @@ export function parseEquationRecursive(equation: string, index: number = 0, stop
             envConfig = gConfig; index = nxtConfig;
           }
         }
-
+        
         const startTok = `\\begin{${env}}`;
         const endTok = `\\end{${env}}`;
         let envCount = 1, scanIdx = index, endIdx = -1;
-
+        
         while (scanIdx < equation.length) {
           if (equation.startsWith(endTok, scanIdx)) {
             envCount--;
             if (envCount === 0) { endIdx = scanIdx; break; }
             scanIdx += endTok.length;
-          } else if (equation.startsWith(startTok, scanIdx)) { envCount++; scanIdx += startTok.length; }
+          } else if (equation.startsWith(startTok, scanIdx)) { envCount++; scanIdx += startTok.length; } 
           else { scanIdx++; }
         }
 
         if (endIdx === -1) { nodes.push({ type: "fixed", text: `\\begin{${env}}` }); continue; }
         const inner = equation.slice(index, endIdx); index = endIdx + endTok.length;
-        const [child] = parseEquationRecursive(inner);
+        const [child] = parseEquationRecursive(inner); 
         nodes.push({ type: "environment", env, envConfig, content: child });
-
-      } else if (spacingCommands.has(cmd)) { nodes.push({ type: "fixed", text: `\\${cmd}`, weight: 0 }); }
+        
+      } else if (spacingCommands.has(cmd)) { nodes.push({ type: "fixed", text: `\\${cmd}`, weight: 0 }); } 
       else if (commandSignatures[cmd] !== undefined) {
         const numArgs = commandSignatures[cmd]; let optionalArg: string | null = null;
         while (index < equation.length && /\s/.test(equation[index] || "")) index++;
@@ -196,7 +197,7 @@ export function parseEquationRecursive(equation: string, index: number = 0, stop
       const trailingSpaces: ASTNode[] = [];
       while (nodes.length > 0) {
         const popped = nodes.pop()!;
-        if (popped.type === "fixed" && /^\s+$/.test(popped.text)) { trailingSpaces.push(popped); }
+        if (popped.type === "fixed" && /^\s+$/.test(popped.text)) { trailingSpaces.push(popped); } 
         else { prev = popped; break; }
       }
 
@@ -204,20 +205,20 @@ export function parseEquationRecursive(equation: string, index: number = 0, stop
 
       let newNode: ASTNode;
       if (prev.type === "scripted") {
-         if (op === "_" && !prev.sub) {
-             prev.sub = argNode;
-             newNode = prev;
-         } else if (op === "^" && !prev.sup) {
-             prev.sup = argNode;
-             newNode = prev;
-         } else {
-             newNode = op === "_"
-                 ? { type: "scripted", base: prev, sub: argNode }
-                 : { type: "scripted", base: prev, sup: argNode };
+         if (op === "_" && !prev.sub) { 
+             prev.sub = argNode; 
+             newNode = prev; 
+         } else if (op === "^" && !prev.sup) { 
+             prev.sup = argNode; 
+             newNode = prev; 
+         } else { 
+             newNode = op === "_" 
+                 ? { type: "scripted", base: prev, sub: argNode } 
+                 : { type: "scripted", base: prev, sup: argNode }; 
          }
       } else {
-          newNode = op === "_"
-              ? { type: "scripted", base: prev, sub: argNode }
+          newNode = op === "_" 
+              ? { type: "scripted", base: prev, sub: argNode } 
               : { type: "scripted", base: prev, sup: argNode };
       }
 
@@ -225,9 +226,9 @@ export function parseEquationRecursive(equation: string, index: number = 0, stop
       nodes.push(...trailingSpaces.reverse());
     } else if (ch === "{") {
       const [g, nxt] = parseGroup(equation, index); index = nxt; const [inner] = parseEquationRecursive(g); nodes.push({ type: "group", children: inner });
-    } else if (ch === "&") { nodes.push({ type: "fixed", text: "&", weight: 0 }); index++; }
-    else if (ch === "}") { break; }
-    else {
+    } else if (ch === "&") { nodes.push({ type: "fixed", text: "&", weight: 0 }); index++; } 
+    else if (ch === "}") { break; } 
+    else { 
       const chStr = equation[index++];
       if (/\s/.test(chStr)) nodes.push({ type: "fixed", text: chStr, weight: 0 });
       else nodes.push({ type: "text", text: chStr });
@@ -243,9 +244,9 @@ export function parseEquation(equation: string): ASTNode[] { return parseEquatio
    ============================================================ */
 export function totalReveal(node: ASTNode): number {
   switch (node.type) {
-    case "text": return 1;
+    case "text": return 1; 
     case "fixed": return node.weight ?? 1;
-    case "command":
+    case "command": 
       if (structuralCommands.has(node.command)) return 1;
       if (literalFirstArgCommands.has(node.command)) {
         return 1 + (node.args.length > 1 ? totalReveal(node.args[1]) : 0);
@@ -283,15 +284,15 @@ export function renderNodeFull(node: ASTNode): string {
 }
 
 export function renderNode(
-  node: ASTNode,
-  revealCount: number,
-  globalOffset: number,
-  isFrontierLine: boolean,
+  node: ASTNode, 
+  revealCount: number, 
+  globalOffset: number, 
+  isFrontierLine: boolean, 
   idTagged: { value: boolean }
 ): RenderResult {
   const isStructuralZero = ('weight' in node && node.weight === 0);
   const nodeWeight = totalReveal(node);
-
+  
   const bypassPhantomWrap = node.type === "environment" || node.type === "leftright" || (node.type === "command" && boundingCommands.has(node.command));
 
   if (revealCount <= 0 && !isStructuralZero && !bypassPhantomWrap) {
@@ -316,20 +317,21 @@ export function renderNode(
     result = { rendered: node.text, used: node.weight ?? 1 };
   } else if (node.type === "command") {
     const opt = node.optionalArg ? `[${node.optionalArg}]` : "";
-
+    
     if (structuralCommands.has(node.command)) {
       const innerArgs = node.args.map(a => a.type === "group" ? renderNodeFull(a) : `{${renderNodeFull(a)}}`).join("");
       result = { rendered: `\\${node.command}${opt}${innerArgs}`, used: 1 };
     } else if (literalFirstArgCommands.has(node.command)) {
       let out = `\\${node.command}${opt}`;
       let currentUsed = 1;
-
+      
       if (node.args.length > 0) {
          out += node.args[0].type === "group" ? renderNodeFull(node.args[0]) : `{${renderNodeFull(node.args[0])}}`;
       }
-
+      
       if (node.args.length > 1) {
          const r = renderNode(node.args[1], revealCount - currentUsed, globalOffset + currentUsed, isFrontierLine, idTagged);
+         // FIX: Secure unrevealed arguments in explicit braces to protect structural macro rendering
          if (revealCount - currentUsed <= 0) {
             out += `{${r.rendered}}`;
          } else {
@@ -343,6 +345,7 @@ export function renderNode(
       let currentUsed = 1;
       for (const arg of node.args) {
         const r = renderNode(arg, revealCount - currentUsed, globalOffset + currentUsed, isFrontierLine, idTagged);
+        // FIX: Secure unrevealed arguments in explicit braces to preserve argument array integrity across sequence clicks
         if (revealCount - currentUsed <= 0 && !('weight' in arg && arg.weight === 0)) {
           out += `{${r.rendered}}`;
         } else {
@@ -389,10 +392,10 @@ export function renderNode(
 }
 
 export function renderNodes(
-  nodes: ASTNode[],
-  revealCount: number,
-  globalOffset: number,
-  isFrontierLine: boolean,
+  nodes: ASTNode[], 
+  revealCount: number, 
+  globalOffset: number, 
+  isFrontierLine: boolean, 
   idTagged: { value: boolean }
 ): { rendered: string, used: number } {
   let out = "", used = 0;
@@ -424,80 +427,168 @@ export function renderNodes(
 }
 
 /* ============================================================
-   Progressive Aligned Equation Component
+   Inner Presentation Component
    ============================================================ */
-const ProgressiveAlignedEquation: React.FC<ProgressiveAlignedEquationProps> = ({
-  equationString,
-  revealCount = 0,
-  displayMode = "block",
+const ProgressiveAlignedEquation: React.FC<ProgressiveAlignedEquationProps> = ({ 
+  displayMode = "block", 
+  equationString 
 }) => {
-  console.log('[ProgressiveAlignedEquation] Mount/Update - equationString:', equationString?.substring(0, 60), 'revealCount:', revealCount, 'displayMode:', displayMode);
+  
+  const rawEquation = equationString || `
+    \\begin{aligned}
+      & \\text{1. Scripts \\& Limits: } X_{k_{1}}^{n^{2}} = \\sum_{i=1}^{\\infty} \\alpha_{i} + \\lim_{x \\to 0} \\frac{\\sin x}{x} \\\\
+      & \\text{2. Nested Groups \\& Fractions: } \\dfrac{a + \\frac{b}{c}}{d - \\binom{n}{k}} \\times \\sqrt{x} \\pm \\tfrac{1}{2} \\\\
+      & \\text{3. Delimiters \\& Operators: } \\left[ \\int_{a}^{b} f(x) \\, dx \\right] \\neq \\operatorname{var}(Y) \\\\
+      & \\text{4. Matrix \\& Structural Bounds: } B = \\begin{array}{|cc|} 1 & 0 \\\\ \\gamma & 1 \\end{array} \\implies \\boxed{\\det(B) = 1} \\\\
+      & \\text{5. Colors, Layouts \\& Accents: } \\textcolor{blue}{\\vec{F}} = m \\color{red}{\\overrightarrow{a}} + \\cancel{\\sigma} \\quad \\text{via} \\quad \\overset{top}{bottom}
+    \\end{aligned}
+  `;
+
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const tokens = useMemo(() => {
-    console.log('[ProgressiveAlignedEquation] Tokenizing equation');
-    let cleanEq = equationString.trim();
+    let cleanEq = rawEquation.trim();
     if (cleanEq.startsWith("\\begin{aligned}") && cleanEq.endsWith("\\end{aligned}")) {
       cleanEq = cleanEq.slice("\\begin{aligned}".length, -("\\end{aligned}".length)).trim();
     }
-    const lines = smartSplitLines(cleanEq);
-    console.log('[ProgressiveAlignedEquation] Split into', lines.length, 'lines');
-    return lines.map(parseEquation);
-  }, [equationString]);
+    return smartSplitLines(cleanEq).map(parseEquation);
+  }, [rawEquation]);
 
-  const lineTotals = useMemo(() => {
-    const totals = tokens.map(t => t.reduce((s, n) => s + totalReveal(n), 0));
-    console.log('[ProgressiveAlignedEquation] Line totals:', totals);
-    return totals;
-  }, [tokens]);
+  const lineTotals = useMemo(() => tokens.map(t => t.reduce((s, n) => s + totalReveal(n), 0)), [tokens]);
 
-  const counts = useMemo(() => {
-    let remaining = revealCount;
-    const result = lineTotals.map(total => {
-      const used = Math.min(remaining, total);
-      remaining -= used;
-      return used;
+  const [counts, setCounts] = useState<number[]>(() => lineTotals.map(() => 0));
+
+  useEffect(() => {
+    setCounts(lineTotals.map(() => 0));
+  }, [lineTotals]);
+
+  const handleReveal = useCallback(() => {
+    setCounts(prev => {
+      const nxt = [...prev];
+      for (let i = 0; i < nxt.length; i++) {
+        if (nxt[i] < lineTotals[i]) { nxt[i]++; break; }
+      }
+      return nxt;
     });
-    console.log('[ProgressiveAlignedEquation] Distributed counts:', result, 'remaining:', remaining);
-    return result;
-  }, [revealCount, lineTotals]);
+  }, [lineTotals]);
+
+  const handleUndo = useCallback(() => {
+    setCounts(prev => {
+      const nxt = [...prev];
+      for (let i = nxt.length - 1; i >= 0; i--) {
+        if (nxt[i] > 0) { nxt[i]--; break; }
+      }
+      return nxt;
+    });
+  }, []);
 
   const katexHtml = useMemo(() => {
     let frontierLineIndex = -1;
     for (let i = 0; i < counts.length; i++) {
       if (counts[i] > 0) frontierLineIndex = i;
     }
-    console.log('[ProgressiveAlignedEquation] Frontier line index:', frontierLineIndex);
 
-    const isCustomRootEnv = /^\s*\\begin\{[a-zA-Z*]+\}/.test(equationString.trim()) && !equationString.trim().startsWith("\\begin{aligned}");
-
+    const isCustomRootEnv = /^\s*\\begin\{[a-zA-Z*]+\}/.test(rawEquation.trim()) && !rawEquation.trim().startsWith("\\begin{aligned}");
+    
     const body = tokens.map((t, i) => {
       const idTagged = { value: false };
       return renderNodes(t, counts[i], 0, i === frontierLineIndex, idTagged).rendered;
-    }).join(" \\\\ ");
+    }).join(" \\\\[1.5em] "); 
 
     const finalLatex = isCustomRootEnv ? body : `\\begin{aligned}${body}\\end{aligned}`;
-    console.log('[ProgressiveAlignedEquation] Final LaTeX length:', finalLatex.length);
 
     try {
-      const html = katex.renderToString(finalLatex, {
+      return katex.renderToString(finalLatex, {
         displayMode: displayMode === "block",
         throwOnError: false,
-        trust: true,
+        trust: true, 
         strict: false
       });
-      console.log('[ProgressiveAlignedEquation] KaTeX rendered successfully, HTML length:', html.length);
-      return html;
     } catch (e) {
-      console.error('[ProgressiveAlignedEquation] KaTeX rendering error:', e);
-      return `<div style="color:red;font-family:monospace;">Render Error: Check Console</div>`;
+      console.error("KaTeX rendering error:", e);
+      return `<div style="color: red; font-family: monospace;">Render Error: Check Console</div>`;
     }
-  }, [tokens, counts, equationString, displayMode]);
+  }, [tokens, counts, rawEquation, displayMode]);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      const targetEl = document.getElementById("active-reveal-target");
+      if (targetEl && canvasRef.current) {
+        targetEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    });
+  }, [counts]);
+
+  const isUndoDisabled = counts.every(c => c === 0);
+  const isRevealDisabled = counts.every((c, i) => c >= lineTotals[i]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+        e.preventDefault();
+        if (!isRevealDisabled) handleReveal();
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault();
+        if (!isUndoDisabled) handleUndo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleReveal, handleUndo, isRevealDisabled]);
+
+  const containerStyle: React.CSSProperties = {
+    display: "flex", flexDirection: "column", width: "100vw", height: "100dvh",
+    overflow: "hidden", backgroundColor: "#ffffff", color: "#000000", boxSizing: "border-box"
+  };
+
+  const canvasStyle: React.CSSProperties = {
+    flex: 1, overflowY: "auto", overflowX: "auto", padding: "40px 24px 80px 24px",
+    boxSizing: "border-box", WebkitOverflowScrolling: "touch", scrollBehavior: "smooth"
+  };
+
+  const formulaWrapperStyle: React.CSSProperties = {
+    position: "relative", minWidth: "max-content", margin: "0 auto", display: "flex",
+    justifyContent: "flex-start", fontSize: "clamp(0.85rem, 3.5vw, 1.6rem)"
+  };
+
+  const controlDeckStyle: React.CSSProperties = {
+    width: "100%", padding: "16px 24px", backgroundColor: "#f8fafc", borderTop: "1px solid #e2e8f0",
+    display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", boxSizing: "border-box"
+  };
+
+  const baseButtonStyle: React.CSSProperties = {
+    padding: "12px 24px", fontSize: "1rem", fontWeight: "600", borderRadius: "8px",
+    border: "none", cursor: "pointer", transition: "all 0.2s ease-in-out", display: "flex",
+    alignItems: "center", justifyContent: "center", minWidth: "120px"
+  };
 
   return (
-    <div
-      className="progressive-aligned-equation"
-      dangerouslySetInnerHTML={{ __html: katexHtml }}
-    />
+    <div style={containerStyle}>
+      <div ref={canvasRef} style={canvasStyle}>
+        <div 
+          style={formulaWrapperStyle}
+          dangerouslySetInnerHTML={{ __html: katexHtml }} 
+        />
+      </div>
+
+      <div style={controlDeckStyle}>
+        <button
+          onClick={handleUndo}
+          disabled={isUndoDisabled}
+          style={{ ...baseButtonStyle, backgroundColor: "#64748b", color: "#ffffff", opacity: isUndoDisabled ? 0.4 : 1, cursor: isUndoDisabled ? "not-allowed" : "pointer" }}
+        >
+          Undo
+        </button>
+
+        <button
+          onClick={handleReveal}
+          disabled={isRevealDisabled}
+          style={{ ...baseButtonStyle, backgroundColor: "#2563eb", color: "#ffffff", opacity: isRevealDisabled ? 0.4 : 1, cursor: isRevealDisabled ? "not-allowed" : "pointer" }}
+        >
+          Reveal Next
+        </button>
+      </div>
+    </div>
   );
 };
 
