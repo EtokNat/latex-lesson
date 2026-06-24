@@ -1,6 +1,6 @@
 # PROJECT STATUS MEMORY
 
-**CURRENT PHASE:** Sprint 8 Complete — Multi-Lesson Management
+**CURRENT PHASE:** Sprint 9 Complete — Knowledge Graph Engine
 
 **COMPLETED SPRINTS:**
 - Sprint 1: Foundation & Types
@@ -11,6 +11,7 @@
 - Sprint 6: Type System Extension & Narration Data Model
 - Sprint 7: Lesson Editor Hardening (block deletion, reordering, duplication, LaTeX preview, image validation, narration editing)
 - Sprint 8: Multi-Lesson Management (lesson library, CRUD service, import/export, LessonList view, backward-compatible migration)
+- Sprint 9: Knowledge Graph Engine (concept extraction, edge inference, KG builder, relevance query, symbol ledger builder)
 
 ---
 
@@ -151,8 +152,31 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 - `src/views/LessonPlanner.test.tsx` — Updated from 26 to 30 tests (back button, onBack, initialLesson, fallback)
 - `src/App.test.tsx` — Updated from 7 to 14 tests (multi-lesson library, full cycle, back navigation, backward compat)
 
+## SPRINT 9 COMPLETION (2026-06-25)
+
+### Knowledge Graph Engine Features
+- **9.1 Concept Extraction**: Extracts concepts from headings, math `\text{}` commands, definition patterns ("is called", "we call", "known as"), and math operations (`\frac`, `\sqrt`, `\sum`). Inferred type (definition/procedure/principle/example/analogy). Deduplication by name.
+- **9.2 Edge Inference**: 6 edge types — PREREQUISITE (appears-before-used), DERIVES_FROM (step order in math), ANALOGOUS_TO (Jaccard similarity of context), CONTRASTS_WITH (explicit contrast language), GENERALIZES (example→principle), EXAMPLE_OF (principle→example).
+- **9.3 Knowledge Graph Builder**: Orchestrates extraction + inference. Validates no cycles in PREREQUISITE edges via topological sort. Computes connection weights for all edges. 43 concepts + 574 edges from seed lesson.
+- **9.4 Relevance Query Engine**: 5 query modes — prerequisites, bridges, contrasts, analogies, spiral. Ranked results by connection strength. Returns `RelevanceReport` with explanations.
+- **9.5 Symbol Ledger Builder**: Scans math blocks for 11 common symbols (a, b, c, x, Δ, ±, √, x₁, x₂, etc.). Identifies canonical forms and aliases. Detects notation conflicts.
+
+### New Files (5)
+- `src/services/conceptExtractor.ts` — Heading/math/text concept extraction with deduplication
+- `src/services/edgeInference.ts` — 6-type edge inference with heuristic rules
+- `src/services/knowledgeGraphBuilder.ts` — Orchestrator with cycle detection/resolution
+- `src/services/relevanceQuery.ts` — 5-mode relevance query with ranked results
+- `src/services/symbolLedgerBuilder.ts` — Math symbol scanning with conflict detection
+
+### New Tests (5 files, 40 tests)
+- `src/services/conceptExtractor.test.ts` — 9 tests (headings, math commands, definitions, empty, dedup, type inference)
+- `src/services/edgeInference.test.ts` — 6 tests (prerequisites, derives, unrelated, example-of, empty, no-self-edges)
+- `src/services/knowledgeGraphBuilder.test.ts` — 6 tests (seed KG, acyclic, cycle rejection, empty, valid types, edge validation)
+- `src/services/relevanceQuery.test.ts` — 9 tests (prerequisites, empty, bridges, contrasts, analogies, unknown, ranking, spiral, seed)
+- `src/services/symbolLedgerBuilder.test.ts` — 10 tests (canonical, a/b/c, Δ, getCanonical, unknown, isDefined, no-math, empty, ±, √)
+
 ---
-**TEST SUITE STATUS:** **144 tests passing across 11 test files** (all passing as of 2026-06-24):
+**TEST SUITE STATUS:** **184 tests passing across 16 test files** (all passing as of 2026-06-25):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -161,6 +185,11 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 | `src/data/symbolLedger.test.ts` | 8 | Canonical lookup, alias resolution, conflict detection, empty ledger |
 | `src/data/types.test.ts` | 8 | Type compilation, narration fields, backward compatibility |
 | `src/components/ProgressiveAlignedEquation.test.tsx` | 5 | Mount, reveal boundaries, empty string, inline displayMode, multiple lines |
+| `src/services/conceptExtractor.test.ts` | 9 | Headings, math commands, definition patterns, empty, dedup, type inference |
+| `src/services/edgeInference.test.ts` | 6 | Prerequisites, derives, unrelated, example-of, empty, no-self-edges |
+| `src/services/knowledgeGraphBuilder.test.ts` | 6 | Seed KG, acyclic, cycle rejection, empty, valid types, edge validation |
+| `src/services/relevanceQuery.test.ts` | 9 | Prerequisites, bridges, contrasts, analogies, unknown, ranking, spiral, seed |
+| `src/services/symbolLedgerBuilder.test.ts` | 10 | Canonical, a/b/c, Δ, ±, √, getCanonical, isDefined, no-math, empty, conflicts |
 | `src/services/lessonStorage.test.ts` | 18 | Migration, CRUD, corruption survival, edge cases |
 | `src/services/lessonImportExport.test.ts` | 8 | Export download, valid import, invalid JSON, missing fields |
 | `src/views/LessonList.test.tsx` | 18 | Empty state, card render, create/select/delete/duplicate/import/export |
@@ -173,4 +202,4 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 - None currently. All tests pass.
 
 **NEXT ACTION REQUIRED:**
-- Sprint 9: Knowledge Graph Engine (concept extraction, edge inference, KG builder, relevance query, symbol ledger builder)
+- Sprint 10: Multi-Agent LLM Narration Pipeline (LLM client, teaching plan agent, vision agent, narration script agent, validation agent, pipeline orchestrator)
