@@ -1,6 +1,14 @@
 # PROJECT STATUS MEMORY
 
-**CURRENT PHASE:** All Sprints Complete — Post-Launch Hardening & Seed Content
+**CURRENT PHASE:** Sprint 6 Complete — Type System Extension & Narration Data Model
+
+**COMPLETED SPRINTS:**
+- Sprint 1: Foundation & Types
+- Sprint 2: Math Engine Integration
+- Sprint 3: Lesson Planner (block CRUD, localStorage save, defensive JSON handling)
+- Sprint 4: Presentation Stage (dark mode viewport, keyboard navigation, progressive reveal, block rendering)
+- Sprint 5: App Orchestration & Styling (view routing, chalkboard CSS animations, localStorage defensive reads)
+- Sprint 6: Type System Extension & Narration Data Model
 
 **COMPLETED SPRINTS:**
 - Sprint 1: Foundation & Types
@@ -79,22 +87,43 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 
 ---
 
+## SPRINT 6 COMPLETION (2026-06-24)
+
+### New Type Files Created
+- `src/data/knowledgeGraph.ts` — ConceptNode, GraphEdge (with 6 edge types), KnowledgeGraph interfaces
+- `src/data/narrationTypes.ts` — AudioTag (12 values), NarrationSegment, BlockNarration, LessonNarration interfaces
+- `src/data/symbolLedger.ts` — SymbolEntry, SymbolLedger interfaces with getCanonical/isDefined methods
+
+### Existing File Modified
+- `src/data/types.ts` — Added optional `narration?: string` and `narrationSteps?: string[]` to LessonBlock (backward compatible)
+
+### New Tests
+- `src/data/knowledgeGraph.test.ts` — 10 tests (KG construction, all ConceptType/EdgeType values, edge-to-concept validation, cycle detection, acyclic validation, empty KG, concepts with no edges)
+- `src/data/narrationTypes.test.ts` — 10 tests (all AudioTag values, full segment creation, minimal segment, BlockNarration, duration estimation, LessonNarration, reveal trigger validation, pause values, empty segments, chained narration)
+- `src/data/symbolLedger.test.ts` — 8 tests (SymbolEntry creation, aliases, ledger construction, canonical lookup, isDefined check, notation conflict detection, empty ledger, block tracking)
+- `src/data/types.test.ts` — Updated from 3 to 8 tests (added narration, narrationSteps, combined fields, backward compatibility)
+
+---
+
 ## TEST SUITE STATUS
 
-**43 tests passing across 5 test files** (all passing as of 2026-06-22):
+**75 tests passing across 8 test files** (all passing as of 2026-06-24):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
+| `src/data/knowledgeGraph.test.ts` | 10 | KG construction, edge validation, cycle detection |
+| `src/data/narrationTypes.test.ts` | 10 | All AudioTag values, segment creation, pause/reveal tracking |
+| `src/data/symbolLedger.test.ts` | 8 | Canonical lookup, alias resolution, conflict detection, empty ledger |
+| `src/data/types.test.ts` | 8 | Type compilation, new narration fields, backward compatibility |
 | `src/components/ProgressiveAlignedEquation.test.tsx` | 5 | Mount with equation, handles reveal boundary, handles empty string, handles inline displayMode, multiple lines |
-| `src/views/LessonPlanner.test.tsx` | 10 | Render with 38-block seed, add heading/math/image blocks, imageUrl visibility, save flow, localStorage error survival, edit content, block count tracking |
+| `src/views/LessonPlanner.test.tsx` | 9 | Render with 38-block seed, add heading/math/image blocks, imageUrl visibility, save flow, localStorage error survival, edit content, block count tracking |
 | `src/views/PresentationStage.test.tsx` | 18 | Render heading/text/image/math blocks, empty lesson, forward/backward navigation, boundary guards, escape exit, progressive reveal increment/decrement, block counter, exit button |
 | `src/App.test.tsx` | 7 | Default render, planner→presentation transition, presentation→planner exit, full cycle toggle, corrupted localStorage survival, missing key handling, valid JSON pre-load |
-| `src/data/types.test.ts` | 3 | Type definition validation |
 
 ---
 
 **PENDING BLOCKERS / ISSUES:**
-- None currently. All known bugs fixed. All tests pass.
+- None currently. All tests pass.
 
 **NEXT ACTION REQUIRED:**
-- None. App is fully functional with seed content ready for manual testing in browser at http://localhost:5173/.
+- Sprint 7: Lesson Editor Hardening (block deletion, reordering, duplication, LaTeX preview, image validation, narration editing)

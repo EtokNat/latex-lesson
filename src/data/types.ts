@@ -5,6 +5,8 @@ export interface LessonBlock {
   type: BlockType;
   content: string;
   imageUrl?: string;
+  narration?: string;
+  narrationSteps?: string[];
 }
 
 export interface Lesson {

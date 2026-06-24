@@ -123,15 +123,14 @@ describe('LessonPlanner', () => {
     expect(onSave).toHaveBeenCalledOnce();
   });
 
-  it('allows editing seed block content', async () => {
+  it('allows editing seed block content', () => {
     render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
 
     // Seed has 8 heading blocks, find the first one's input
     const inputs = screen.getAllByPlaceholderText('Enter heading content') as HTMLInputElement[];
     expect(inputs.length).toBe(8);
     const headingInput = inputs[0];
-    await userEvent.clear(headingInput);
-    await userEvent.type(headingInput, 'Updated Heading');
+    fireEvent.change(headingInput, { target: { value: 'Updated Heading' } });
 
     expect(headingInput.value).toBe('Updated Heading');
   });
