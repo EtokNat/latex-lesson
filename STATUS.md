@@ -1,6 +1,6 @@
 # PROJECT STATUS MEMORY
 
-**CURRENT PHASE:** Sprint 6 Complete — Type System Extension & Narration Data Model
+**CURRENT PHASE:** Sprint 7 Complete — Lesson Editor Hardening
 
 **COMPLETED SPRINTS:**
 - Sprint 1: Foundation & Types
@@ -9,13 +9,7 @@
 - Sprint 4: Presentation Stage (dark mode viewport, keyboard navigation, progressive reveal, block rendering)
 - Sprint 5: App Orchestration & Styling (view routing, chalkboard CSS animations, localStorage defensive reads)
 - Sprint 6: Type System Extension & Narration Data Model
-
-**COMPLETED SPRINTS:**
-- Sprint 1: Foundation & Types
-- Sprint 2: Math Engine Integration
-- Sprint 3: Lesson Planner (block CRUD, localStorage save, defensive JSON handling)
-- Sprint 4: Presentation Stage (dark mode viewport, keyboard navigation, progressive reveal, block rendering)
-- Sprint 5: App Orchestration & Styling (view routing, chalkboard CSS animations, localStorage defensive reads)
+- Sprint 7: Lesson Editor Hardening (block deletion, reordering, duplication, LaTeX preview, image validation, narration editing)
 
 ---
 
@@ -103,27 +97,49 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 - `src/data/symbolLedger.test.ts` — 8 tests (SymbolEntry creation, aliases, ledger construction, canonical lookup, isDefined check, notation conflict detection, empty ledger, block tracking)
 - `src/data/types.test.ts` — Updated from 3 to 8 tests (added narration, narrationSteps, combined fields, backward compatibility)
 
+## SPRINT 7 COMPLETION (2026-06-24)
+
+### Lesson Editor Hardening Features
+- **7.1 Block Deletion**: Delete button (✕) with `window.confirm` prompt, removes block from state, updates count
+- **7.2 Block Reordering**: ▲▼ buttons on each block, first block's ▲ disabled, last block's ▼ disabled
+- **7.3 Block Duplication**: ⧉ button creates deep copy with new unique ID
+- **7.4 Math LaTeX Preview**: 300ms debounced `useEffect` calling `katex.renderToString`, `dangerouslySetInnerHTML` display, invalid LaTeX shows red error text
+- **7.5 Image URL Validation**: 500ms debounced `useEffect` with `AbortController` HEAD request, ✓/✗ status indicators per image block
+- **7.6 Narration Field Editing**: Collapsible narration section (▶/▼ toggle), textarea for block narration, step management for math blocks (add/remove/edit steps)
+
+### New Types (from Sprint 6)
+- `src/data/knowledgeGraph.ts` — ConceptNode, GraphEdge (6 edge types), KnowledgeGraph
+- `src/data/narrationTypes.ts` — AudioTag (12 values), NarrationSegment, BlockNarration, LessonNarration
+- `src/data/symbolLedger.ts` — SymbolEntry, SymbolLedger with getCanonical/isDefined methods
+
+### Modified Files
+- `src/data/types.ts` — Added optional `narration?: string` and `narrationSteps?: string[]` to LessonBlock
+- `src/views/LessonPlanner.tsx` — ~200 lines added (CRUD operations, debounced math preview, image validation, narration editing)
+
+### New Tests
+- `src/data/knowledgeGraph.test.ts` — 10 tests
+- `src/data/narrationTypes.test.ts` — 10 tests
+- `src/data/symbolLedger.test.ts` — 8 tests
+- `src/data/types.test.ts` — 8 tests (3 → 8, added narration coverage)
+- `src/views/LessonPlanner.test.tsx` — 26 tests (9 → 26, all Sprint 7 features)
+
 ---
-
-## TEST SUITE STATUS
-
-**75 tests passing across 8 test files** (all passing as of 2026-06-24):
+**TEST SUITE STATUS:** **92 tests passing across 8 test files** (all passing as of 2026-06-24):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
 | `src/data/knowledgeGraph.test.ts` | 10 | KG construction, edge validation, cycle detection |
 | `src/data/narrationTypes.test.ts` | 10 | All AudioTag values, segment creation, pause/reveal tracking |
 | `src/data/symbolLedger.test.ts` | 8 | Canonical lookup, alias resolution, conflict detection, empty ledger |
-| `src/data/types.test.ts` | 8 | Type compilation, new narration fields, backward compatibility |
-| `src/components/ProgressiveAlignedEquation.test.tsx` | 5 | Mount with equation, handles reveal boundary, handles empty string, handles inline displayMode, multiple lines |
-| `src/views/LessonPlanner.test.tsx` | 9 | Render with 38-block seed, add heading/math/image blocks, imageUrl visibility, save flow, localStorage error survival, edit content, block count tracking |
-| `src/views/PresentationStage.test.tsx` | 18 | Render heading/text/image/math blocks, empty lesson, forward/backward navigation, boundary guards, escape exit, progressive reveal increment/decrement, block counter, exit button |
-| `src/App.test.tsx` | 7 | Default render, planner→presentation transition, presentation→planner exit, full cycle toggle, corrupted localStorage survival, missing key handling, valid JSON pre-load |
+| `src/data/types.test.ts` | 8 | Type compilation, narration fields, backward compatibility |
+| `src/components/ProgressiveAlignedEquation.test.tsx` | 5 | Mount, reveal boundaries, empty string, inline displayMode, multiple lines |
+| `src/views/LessonPlanner.test.tsx` | 26 | Seed render, block CRUD, math preview, image validation, narration editing, persistence |
+| `src/views/PresentationStage.test.tsx` | 18 | Block rendering, navigation, boundary guards, escape exit, progressive reveal |
+| `src/App.test.tsx` | 7 | Default render, view transitions, full cycle, localStorage handling |
 
 ---
-
 **PENDING BLOCKERS / ISSUES:**
 - None currently. All tests pass.
 
 **NEXT ACTION REQUIRED:**
-- Sprint 7: Lesson Editor Hardening (block deletion, reordering, duplication, LaTeX preview, image validation, narration editing)
+- Sprint 8: Presentation Stage Hardening (print layout, narrative mode, block thumbnails, remote control receiver skeleton)
