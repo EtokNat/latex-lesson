@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Lesson, LessonBlock } from "../data/types";
+import type { Lesson, LessonBlock } from "../data/types";
 import ProgressiveAlignedEquation, {
   parseEquation,
   totalReveal,

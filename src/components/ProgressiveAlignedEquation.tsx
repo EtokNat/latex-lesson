@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import katex from "katex";
+import "katex/dist/katex.min.css";
 
 /* ============================================================
    TypeScript Interfaces & Fused AST Types
@@ -473,7 +474,7 @@ const ProgressiveAlignedEquation: React.FC<ProgressiveAlignedEquationProps> = ({
     const body = tokens.map((t, i) => {
       const idTagged = { value: false };
       return renderNodes(t, counts[i], 0, i === frontierLineIndex, idTagged).rendered;
-    }).join(" \\\\ ");
+    }).join(" \\\\[1.5em] ");
 
     const finalLatex = isCustomRootEnv ? body : `\\begin{aligned}${body}\\end{aligned}`;
     console.log('[ProgressiveAlignedEquation] Final LaTeX length:', finalLatex.length);
@@ -495,7 +496,7 @@ const ProgressiveAlignedEquation: React.FC<ProgressiveAlignedEquationProps> = ({
 
   return (
     <div
-      className="progressive-aligned-equation"
+      className="progressive-aligned-equation text-white"
       dangerouslySetInnerHTML={{ __html: katexHtml }}
     />
   );

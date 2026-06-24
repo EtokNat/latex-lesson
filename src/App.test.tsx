@@ -41,15 +41,15 @@ describe("App", () => {
     it("transitions to PresentationStage after save", () => {
       render(<App />);
       fireEvent.click(screen.getByText("Save and Present"));
-      // Empty lesson shows the empty state in PresentationStage
-      expect(screen.getByText(/No blocks to present/)).toBeTruthy();
+      // Seed lesson has 38 blocks, first is a heading
+      expect(screen.getByText("1. What Is a Quadratic Equation?")).toBeTruthy();
     });
 
     it("returns to LessonPlanner on exit", () => {
       render(<App />);
       fireEvent.click(screen.getByText("Save and Present"));
-      // Now in presentation mode
-      expect(screen.getByText(/No blocks to present/)).toBeTruthy();
+      // Now in presentation mode showing seed lesson heading
+      expect(screen.getByText("1. What Is a Quadratic Equation?")).toBeTruthy();
       // Exit via Escape
       fireEvent.keyDown(window, { key: "Escape" });
       // Back to planner
@@ -59,15 +59,15 @@ describe("App", () => {
 
     it("toggles between views correctly on full cycle", () => {
       render(<App />);
-      // Planner -> Presentation (empty lesson shows empty state)
+      // Planner -> Presentation (seed lesson has content)
       fireEvent.click(screen.getByText("Save and Present"));
-      expect(screen.getByText(/No blocks to present/)).toBeTruthy();
+      expect(screen.getByText("1. What Is a Quadratic Equation?")).toBeTruthy();
       // Presentation -> Planner
       fireEvent.keyDown(window, { key: "Escape" });
       expect(screen.getByText("Lesson Planner")).toBeTruthy();
       // Planner -> Presentation again
       fireEvent.click(screen.getByText("Save and Present"));
-      expect(screen.getByText(/No blocks to present/)).toBeTruthy();
+      expect(screen.getByText("1. What Is a Quadratic Equation?")).toBeTruthy();
     });
   });
 
@@ -97,7 +97,7 @@ describe("App", () => {
       });
       mockLocalStorage(() => savedLesson);
       render(<App />);
-      // Should still render planner first (user can then present)
+      // Should still render planner (user can then present)
       expect(screen.getByText("Lesson Planner")).toBeTruthy();
     });
   });
