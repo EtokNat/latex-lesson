@@ -13,4 +13,10 @@ export interface Lesson {
   id: string;
   title: string;
   blocks: LessonBlock[];
+  lastModified?: string;
+}
+
+export interface LessonLibrary {
+  lessons: Lesson[];
+  activeLessonId: string;
 }

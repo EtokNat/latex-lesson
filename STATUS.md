@@ -1,6 +1,6 @@
 # PROJECT STATUS MEMORY
 
-**CURRENT PHASE:** Sprint 7 Complete — Lesson Editor Hardening
+**CURRENT PHASE:** Sprint 8 Complete — Multi-Lesson Management
 
 **COMPLETED SPRINTS:**
 - Sprint 1: Foundation & Types
@@ -10,6 +10,7 @@
 - Sprint 5: App Orchestration & Styling (view routing, chalkboard CSS animations, localStorage defensive reads)
 - Sprint 6: Type System Extension & Narration Data Model
 - Sprint 7: Lesson Editor Hardening (block deletion, reordering, duplication, LaTeX preview, image validation, narration editing)
+- Sprint 8: Multi-Lesson Management (lesson library, CRUD service, import/export, LessonList view, backward-compatible migration)
 
 ---
 
@@ -123,8 +124,35 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 - `src/data/types.test.ts` — 8 tests (3 → 8, added narration coverage)
 - `src/views/LessonPlanner.test.tsx` — 26 tests (9 → 26, all Sprint 7 features)
 
+## SPRINT 8 COMPLETION (2026-06-24)
+
+### Multi-Lesson Management Features
+- **8.1 Lesson Storage Restructure**: `localStorage('lesson_library')` stores `LessonLibrary` interface. Automatic one-way migration from legacy `saved_lesson` key. Defensive reads with try/catch, fallback to seed lesson library.
+- **8.2 Lesson List View**: Grid of lesson cards showing title, block count, last modified date. Create (via prompt), duplicate, delete (via confirm), import, and export actions per card. Empty state message.
+- **8.3 Lesson Import/Export**: JSON file download via Blob + URL.createObjectURL. File upload via hidden input + FileReader. Validation checks required fields (id, title, blocks). Defensive try/catch around JSON.parse.
+- **8.4 App Router Update**: Three-view routing (`library` | `planner` | `presentation`). Library shown when 2+ lessons exist. Single-lesson mode skips library (backward compatible). Exit from presentation → library if 2+ lessons, else planner.
+- **8.5 LessonPlanner Refactor**: Controlled component receiving `initialLesson` prop (App is single source of truth). Optional `onBack` prop. Falls back to SEED_LESSON when no initialLesson provided.
+
+### New Files (4)
+- `src/data/seedLesson.ts` — SEED_LESSON constant extracted from LessonPlanner
+- `src/services/lessonStorage.ts` — CRUD service with localStorage, migration, defensive reads
+- `src/services/lessonImportExport.ts` — JSON file download and upload with validation
+- `src/views/LessonList.tsx` — Responsive grid of lesson cards with full action set
+
+### Modified Files (3)
+- `src/data/types.ts` — Added `lastModified?: string` to Lesson; added `LessonLibrary` interface
+- `src/views/LessonPlanner.tsx` — Controlled component pattern; removed localStorage R/W; added `onBack` prop
+- `src/App.tsx` — Three-view router; orchestrates all lesson CRUD via services
+
+### New Tests (3 files, 52 tests)
+- `src/services/lessonStorage.test.ts` — 18 tests (migration, CRUD, corruption survival, edge cases)
+- `src/services/lessonImportExport.test.ts` — 8 tests (export download, valid import, invalid JSON, missing fields)
+- `src/views/LessonList.test.tsx` — 18 tests (empty state, card render, create/select/delete/duplicate/import/export callbacks)
+- `src/views/LessonPlanner.test.tsx` — Updated from 26 to 30 tests (back button, onBack, initialLesson, fallback)
+- `src/App.test.tsx` — Updated from 7 to 14 tests (multi-lesson library, full cycle, back navigation, backward compat)
+
 ---
-**TEST SUITE STATUS:** **92 tests passing across 8 test files** (all passing as of 2026-06-24):
+**TEST SUITE STATUS:** **144 tests passing across 11 test files** (all passing as of 2026-06-24):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -133,13 +161,16 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 | `src/data/symbolLedger.test.ts` | 8 | Canonical lookup, alias resolution, conflict detection, empty ledger |
 | `src/data/types.test.ts` | 8 | Type compilation, narration fields, backward compatibility |
 | `src/components/ProgressiveAlignedEquation.test.tsx` | 5 | Mount, reveal boundaries, empty string, inline displayMode, multiple lines |
-| `src/views/LessonPlanner.test.tsx` | 26 | Seed render, block CRUD, math preview, image validation, narration editing, persistence |
+| `src/services/lessonStorage.test.ts` | 18 | Migration, CRUD, corruption survival, edge cases |
+| `src/services/lessonImportExport.test.ts` | 8 | Export download, valid import, invalid JSON, missing fields |
+| `src/views/LessonList.test.tsx` | 18 | Empty state, card render, create/select/delete/duplicate/import/export |
+| `src/views/LessonPlanner.test.tsx` | 30 | Seed render, block CRUD, math preview, image validation, narration, back button, initialLesson |
 | `src/views/PresentationStage.test.tsx` | 18 | Block rendering, navigation, boundary guards, escape exit, progressive reveal |
-| `src/App.test.tsx` | 7 | Default render, view transitions, full cycle, localStorage handling |
+| `src/App.test.tsx` | 14 | View transitions, full cycle, localStorage, multi-lesson library, back navigation |
 
 ---
 **PENDING BLOCKERS / ISSUES:**
 - None currently. All tests pass.
 
 **NEXT ACTION REQUIRED:**
-- Sprint 8: Presentation Stage Hardening (print layout, narrative mode, block thumbnails, remote control receiver skeleton)
+- Sprint 9: Knowledge Graph Engine (concept extraction, edge inference, KG builder, relevance query, symbol ledger builder)

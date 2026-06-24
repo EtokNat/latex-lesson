@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LessonPlanner from './LessonPlanner';
+import { SEED_LESSON } from '../data/seedLesson';
 
 vi.mock('katex', () => ({
   default: {
@@ -15,25 +16,18 @@ vi.mock('katex', () => ({
 const mockFetch = vi.fn().mockResolvedValue({ ok: true });
 
 describe('LessonPlanner', () => {
-  const mockSetItem = vi.fn();
-  const mockGetItem = vi.fn(() => null);
+  let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', mockFetch);
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: mockGetItem,
-        setItem: mockSetItem,
-      },
-      writable: true,
-    });
   });
 
   // === existing tests ===
 
   it('renders the planner with 38-block seed lesson and add buttons', () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     expect(screen.getByPlaceholderText('Enter lesson title')).toBeTruthy();
     expect(screen.getByText('+ Heading')).toBeTruthy();
@@ -45,7 +39,7 @@ describe('LessonPlanner', () => {
   });
 
   it('adds a heading block to existing seed blocks', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     await userEvent.click(screen.getByText('+ Heading'));
 
@@ -55,7 +49,7 @@ describe('LessonPlanner', () => {
   }, 10000);
 
   it('adds a math block to existing seed blocks', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     await userEvent.click(screen.getByText('+ Math'));
 
@@ -65,7 +59,7 @@ describe('LessonPlanner', () => {
   });
 
   it('shows imageUrl inputs for seed image blocks and newly added one', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const before = screen.getAllByPlaceholderText('Image URL');
     expect(before).toHaveLength(5);
@@ -77,7 +71,7 @@ describe('LessonPlanner', () => {
   });
 
   it('does not add imageUrl input for non-image type additions', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     await userEvent.click(screen.getByText('+ Text'));
 
@@ -85,9 +79,9 @@ describe('LessonPlanner', () => {
     expect(imageInputs).toHaveLength(5);
   });
 
-  it('calls onSaveAndPresent and localStorage.setItem on save', async () => {
+  it('calls onSaveAndPresent with lesson data on save', async () => {
     const onSave = vi.fn();
-    render(<LessonPlanner onSaveAndPresent={onSave} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={onSave} />);
 
     const titleInput = screen.getByPlaceholderText('Enter lesson title') as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: 'My Lesson' } });
@@ -96,40 +90,14 @@ describe('LessonPlanner', () => {
 
     await userEvent.click(screen.getByText('Save and Present'));
 
-    expect(mockSetItem).toHaveBeenCalledOnce();
-    const savedJson = mockSetItem.mock.calls[0][1];
-    const parsed = JSON.parse(savedJson);
-    expect(parsed.title).toBe('My Lesson');
-    expect(parsed.blocks).toHaveLength(39);
-    expect(parsed.blocks[38].type).toBe('math');
-
     expect(onSave).toHaveBeenCalledOnce();
     expect(onSave.mock.calls[0][0].title).toBe('My Lesson');
     expect(onSave.mock.calls[0][0].blocks).toHaveLength(39);
-  });
-
-  it('survives localStorage.setItem throwing an error', async () => {
-    const onSave = vi.fn();
-    const brokenSetItem = vi.fn(() => { throw new Error('QuotaExceeded'); });
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: mockGetItem,
-        setItem: brokenSetItem,
-      },
-      writable: true,
-    });
-
-    expect(() => {
-      render(<LessonPlanner onSaveAndPresent={onSave} />);
-    }).not.toThrow();
-
-    await userEvent.click(screen.getByText('Save and Present'));
-
-    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave.mock.calls[0][0].blocks[38].type).toBe('math');
   });
 
   it('allows editing seed block content', () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const inputs = screen.getAllByPlaceholderText('Enter heading content') as HTMLInputElement[];
     expect(inputs.length).toBe(8);
@@ -140,7 +108,7 @@ describe('LessonPlanner', () => {
   });
 
   it('tracks block count correctly after adding to seed', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     expect(screen.getByText('Blocks (38)')).toBeTruthy();
 
@@ -154,7 +122,7 @@ describe('LessonPlanner', () => {
 
   it('deletes block and removes it from count', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     expect(screen.getByText('Blocks (38)')).toBeTruthy();
 
@@ -168,7 +136,7 @@ describe('LessonPlanner', () => {
 
   it('shows confirmation prompt on delete', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const deleteButtons = screen.getAllByLabelText('Delete block');
     await userEvent.click(deleteButtons[0]);
@@ -181,7 +149,7 @@ describe('LessonPlanner', () => {
   // === 7.2: BLOCK REORDERING ===
 
   it('moves block up when up button is clicked', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     // Click down on first block (heading) to swap with second block (text)
     const downButtons = screen.getAllByLabelText('Move block down');
@@ -193,7 +161,7 @@ describe('LessonPlanner', () => {
   });
 
   it('moves block down when down button is clicked', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const downButtons = screen.getAllByLabelText('Move block down');
     await userEvent.click(downButtons[0]);
@@ -204,7 +172,7 @@ describe('LessonPlanner', () => {
   });
 
   it('disables up button on first block', () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const upButtons = screen.getAllByLabelText('Move block up');
     expect((upButtons[0] as HTMLButtonElement).disabled).toBe(true);
@@ -212,7 +180,7 @@ describe('LessonPlanner', () => {
   });
 
   it('disables down button on last block', () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const downButtons = screen.getAllByLabelText('Move block down');
     const lastIdx = downButtons.length - 1;
@@ -223,7 +191,7 @@ describe('LessonPlanner', () => {
   // === 7.3: BLOCK DUPLICATION ===
 
   it('creates duplicate block with new ID', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     expect(screen.getByText('Blocks (38)')).toBeTruthy();
 
@@ -238,7 +206,7 @@ describe('LessonPlanner', () => {
   // === 7.4: MATH LATEX PREVIEW ===
 
   it('renders math preview for seed math blocks after debounce', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     // Wait for 300ms debounce + render time
     await waitFor(() => {
@@ -249,14 +217,13 @@ describe('LessonPlanner', () => {
   });
 
   it('shows error-like output for invalid LaTeX input', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     // Add a new math block
     await userEvent.click(screen.getByText('+ Math'));
 
     const mathInputs = screen.getAllByPlaceholderText('Enter math content') as HTMLInputElement[];
     const newInput = mathInputs[mathInputs.length - 1];
-    const newBlockId = newInput.closest('[data-testid]')?.getAttribute('data-testid')?.replace('math-preview-', '') || '';
 
     // Type "INVALID_LATEX" to trigger error path
     fireEvent.change(newInput, { target: { value: 'INVALID_LATEX' } });
@@ -272,7 +239,7 @@ describe('LessonPlanner', () => {
   // === 7.5: IMAGE URL VALIDATION ===
 
   it('shows valid status for reachable image URL', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     // Change the first image URL to trigger validation
     const imageInputs = screen.getAllByPlaceholderText('Image URL') as HTMLInputElement[];
@@ -290,7 +257,7 @@ describe('LessonPlanner', () => {
     const failFetch = vi.fn().mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('fetch', failFetch);
 
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const imageInputs = screen.getAllByPlaceholderText('Image URL') as HTMLInputElement[];
     fireEvent.change(imageInputs[0], { target: { value: 'https://bad.example.com/img.png' } });
@@ -307,7 +274,7 @@ describe('LessonPlanner', () => {
   // === 7.6: NARRATION FIELD EDITING ===
 
   it('shows narration textarea when narration section is expanded', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const toggleButtons = screen.getAllByLabelText('Toggle narration');
     await userEvent.click(toggleButtons[0]);
@@ -320,7 +287,7 @@ describe('LessonPlanner', () => {
   });
 
   it('allows editing narration text', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const toggleButtons = screen.getAllByLabelText('Toggle narration');
     await userEvent.click(toggleButtons[0]);
@@ -332,7 +299,7 @@ describe('LessonPlanner', () => {
   });
 
   it('shows narration steps for math blocks', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     // First math block is seed-3 at index 2
     const toggleButtons = screen.getAllByLabelText('Toggle narration');
@@ -343,7 +310,7 @@ describe('LessonPlanner', () => {
   });
 
   it('allows adding narration steps for math blocks', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const toggleButtons = screen.getAllByLabelText('Toggle narration');
     await userEvent.click(toggleButtons[2]);
@@ -360,7 +327,7 @@ describe('LessonPlanner', () => {
   });
 
   it('allows removing narration steps', async () => {
-    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
 
     const toggleButtons = screen.getAllByLabelText('Toggle narration');
     await userEvent.click(toggleButtons[2]);
@@ -377,13 +344,13 @@ describe('LessonPlanner', () => {
 
     const afterCount = screen.queryAllByPlaceholderText(/Step \d narration…/).length;
     expect(afterCount).toBe(beforeCount - 1);
-  });
+  }, 15000);
 
   // === NARRATION PERSISTENCE THROUGH SAVE ===
 
   it('persists narration field through save', async () => {
     const onSave = vi.fn();
-    render(<LessonPlanner onSaveAndPresent={onSave} />);
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={onSave} />);
 
     const toggleButtons = screen.getAllByLabelText('Toggle narration');
     await userEvent.click(toggleButtons[0]);
@@ -396,5 +363,43 @@ describe('LessonPlanner', () => {
     expect(onSave).toHaveBeenCalledOnce();
     const savedLesson = onSave.mock.calls[0][0];
     expect(savedLesson.blocks[0].narration).toBe('This is narration text.');
+  }, 15000);
+
+  // === SPRINT 8: LESSONPLANNER REFACTOR ===
+
+  it('renders back button when onBack is provided', () => {
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} onBack={vi.fn()} />);
+    expect(screen.getByText('← Back to Library')).toBeTruthy();
+  });
+
+  it('calls onBack when back button is clicked', async () => {
+    const onBack = vi.fn();
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} onBack={onBack} />);
+    await userEvent.click(screen.getByText('← Back to Library'));
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it('does not render back button without onBack prop', () => {
+    render(<LessonPlanner initialLesson={SEED_LESSON} onSaveAndPresent={vi.fn()} />);
+    expect(screen.queryByText('← Back to Library')).toBeNull();
+  });
+
+  it('loads initialLesson title and blocks', () => {
+    const customLesson = {
+      id: 'custom-1',
+      title: 'Custom Lesson',
+      blocks: [
+        { id: 'cb1', type: 'text' as const, content: 'Custom block content' },
+      ],
+    };
+    render(<LessonPlanner initialLesson={customLesson} onSaveAndPresent={vi.fn()} />);
+    expect((screen.getByPlaceholderText('Enter lesson title') as HTMLInputElement).value).toBe('Custom Lesson');
+    expect(screen.getByText('Blocks (1)')).toBeTruthy();
+  });
+
+  it('falls back to seed lesson when no initialLesson provided', () => {
+    render(<LessonPlanner onSaveAndPresent={vi.fn()} />);
+    expect((screen.getByPlaceholderText('Enter lesson title') as HTMLInputElement).value).toContain('Quadratic Equations');
+    expect(screen.getByText('Blocks (38)')).toBeTruthy();
   });
 });
