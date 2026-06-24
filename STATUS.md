@@ -1,6 +1,6 @@
 # PROJECT STATUS MEMORY
 
-**CURRENT PHASE:** Sprint 9 Complete — Knowledge Graph Engine
+**CURRENT PHASE:** Sprint 10 Complete — Multi-Agent LLM Narration Pipeline
 
 **COMPLETED SPRINTS:**
 - Sprint 1: Foundation & Types
@@ -12,6 +12,7 @@
 - Sprint 7: Lesson Editor Hardening (block deletion, reordering, duplication, LaTeX preview, image validation, narration editing)
 - Sprint 8: Multi-Lesson Management (lesson library, CRUD service, import/export, LessonList view, backward-compatible migration)
 - Sprint 9: Knowledge Graph Engine (concept extraction, edge inference, KG builder, relevance query, symbol ledger builder)
+- Sprint 10: Multi-Agent LLM Narration Pipeline (LLM client, teaching plan agent, vision agent, narration script agent, validation agent, pipeline orchestrator)
 
 ---
 
@@ -175,8 +176,33 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 - `src/services/relevanceQuery.test.ts` — 9 tests (prerequisites, empty, bridges, contrasts, analogies, unknown, ranking, spiral, seed)
 - `src/services/symbolLedgerBuilder.test.ts` — 10 tests (canonical, a/b/c, Δ, getCanonical, unknown, isDefined, no-math, empty, ±, √)
 
+## SPRINT 10 COMPLETION (2026-06-25)
+
+### Multi-Agent LLM Narration Pipeline Features
+- **10.1 LLM Client**: Abstract `generateCompletion()` with configurable `LLMFunction`. Retry logic (3 attempts, exponential backoff). Token estimation and cost tracking for Claude and GPT-4o models.
+- **10.2 Teaching Plan Agent**: Takes Lesson + KnowledgeGraph → produces `TeachingPlan` with concept, prior knowledge, analogy, anticipated confusion, emotional beat, bridge, and cross-references per block.
+- **10.3 Vision Agent**: Analyzes image blocks for pedagogical enrichment (main insight, first look, pattern, teacher question, connection to math). Graceful fallback to ground truth author content on API failure.
+- **10.4 Narration Script Agent**: Produces complete `LessonNarration` with `{REVEAL}`, `{SOCRATIC}`, `{PAUSE:N}` markers and 12 emotional audio tags. Validates and cleans segments (strips invalid tags).
+- **10.5 Validation Agent**: 8 checks — verbatim reading (CRITICAL), cross-reference density (WARNING), reveal step coverage (WARNING), dead voice detection (WARNING), symbol inconsistency (WARNING), quantitative mismatch (CRITICAL), forward references (WARNING), emotional tone mismatch (WARNING).
+- **10.6 Narration Pipeline Orchestrator**: 7-step pipeline (KG → ledger → teaching plan → vision → relevance → narration → validation). Retry loop on CRITICAL flags (max 3 retries). Full progress tracking.
+
+### New Files (7)
+- `src/services/llmClient.ts` — LLM client with retry, cost tracking, configurable backend
+- `src/services/agents/teachingPlanAgent.ts` — Teaching plan generation from KG + lesson
+- `src/services/agents/visionAgent.ts` — Image analysis with ground truth fallback
+- `src/services/agents/narrationScriptAgent.ts` — Narration script generation with markers and audio tags
+- `src/services/agents/validationAgent.ts` — 8-check validation with CRITICAL/WARNING severity
+- `src/services/narrationPipeline.ts` — Full pipeline orchestrator with retry loop
+
+### New Tests (5 files, 28 tests)
+- `src/services/agents/teachingPlanAgent.test.ts` — 5 tests (seed plan, empty, headings-only, invalid format, prompt building)
+- `src/services/agents/visionAgent.test.ts` — 4 tests (pedagogical enrichment, fallback on failure, ground truth anchoring, missing fields)
+- `src/services/agents/narrationScriptAgent.test.ts` — 6 tests (tagged narration, cross-references, invalid tag stripping, duration estimation, missing pauses, invalid format)
+- `src/services/agents/validationAgent.test.ts` — 8 tests (verbatim, dead voice, symbol inconsistency, clean narration, quantitative mismatch, forward references, tone mismatch, report counts)
+- `src/services/narrationPipeline.test.ts` — 5 tests (end-to-end, retry on failure, complete narration output, image blocks, seed lesson)
+
 ---
-**TEST SUITE STATUS:** **184 tests passing across 16 test files** (all passing as of 2026-06-25):
+**TEST SUITE STATUS:** **212 tests passing across 21 test files** (all passing as of 2026-06-25):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -192,6 +218,11 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 | `src/services/symbolLedgerBuilder.test.ts` | 10 | Canonical, a/b/c, Δ, ±, √, getCanonical, isDefined, no-math, empty, conflicts |
 | `src/services/lessonStorage.test.ts` | 18 | Migration, CRUD, corruption survival, edge cases |
 | `src/services/lessonImportExport.test.ts` | 8 | Export download, valid import, invalid JSON, missing fields |
+| `src/services/agents/teachingPlanAgent.test.ts` | 5 | Seed plan, empty, headings-only, invalid format, prompt building |
+| `src/services/agents/visionAgent.test.ts` | 4 | Enrichment, fallback, truth anchoring, missing fields |
+| `src/services/agents/narrationScriptAgent.test.ts` | 6 | Tagged narration, cross-refs, tag stripping, duration, missing pauses, invalid format |
+| `src/services/agents/validationAgent.test.ts` | 8 | Verbatim, dead voice, symbol, clean pass, quantitative, forward refs, tone, counts |
+| `src/services/narrationPipeline.test.ts` | 5 | End-to-end, retry, complete output, image blocks, seed lesson |
 | `src/views/LessonList.test.tsx` | 18 | Empty state, card render, create/select/delete/duplicate/import/export |
 | `src/views/LessonPlanner.test.tsx` | 30 | Seed render, block CRUD, math preview, image validation, narration, back button, initialLesson |
 | `src/views/PresentationStage.test.tsx` | 18 | Block rendering, navigation, boundary guards, escape exit, progressive reveal |
@@ -202,4 +233,4 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 - None currently. All tests pass.
 
 **NEXT ACTION REQUIRED:**
-- Sprint 10: Multi-Agent LLM Narration Pipeline (LLM client, teaching plan agent, vision agent, narration script agent, validation agent, pipeline orchestrator)
+- Sprint 11: TTS Integration & Timing Engine (TTS client, audio tag preprocessor, math-to-speech preprocessor, narration audio generator, timing engine, timeline builder)
