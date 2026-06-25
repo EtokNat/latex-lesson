@@ -3,7 +3,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { buildCompositeConfig, executeComposite } from '../composite';
+import { buildCompositeConfig, executeComposite, framesToVideo } from '../composite';
+import type { FrameRecord } from '../composite';
 import type { AudioSegment } from '../../src/services/narrationAudioGenerator';
 
 vi.mock('node:child_process', () => ({
@@ -134,5 +135,126 @@ describe('executeComposite', () => {
 
     const config = await buildCompositeConfig(makeSegments(1), '/tmp/video.webm', '/tmp/output.mp4');
     await expect(executeComposite(config)).rejects.toThrow('ffmpeg not found');
+  });
+});
+
+describe('framesToVideo', () => {
+  function makeFrames(count: number): FrameRecord[] {
+    return Array.from({ length: count }, (_, i) => ({
+      file: `frame_${String(i).padStart(6, '0')}.png`,
+      timeMs: i * 1000,
+    }));
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const mockExecFile = execFile as ReturnType<typeof vi.fn>;
+    mockExecFile.mockImplementation((_cmd: string, _args: string[], cb: (error: null, stdout: string, stderr: string) => void) => {
+      const child = {
+        on: vi.fn().mockImplementation((event: string, handler: (code: number) => void) => {
+          if (event === 'close') {
+            setImmediate(() => handler(0));
+          }
+          return child;
+        }),
+      };
+      setImmediate(() => cb(null, '', ''));
+      return child;
+    });
+  });
+
+  it('writes concat file with correct duration entries', async () => {
+    const frames = makeFrames(3);
+    const fsMod = await import('node:fs');
+    const writeFileMock = fsMod.promises.writeFile as ReturnType<typeof vi.fn>;
+
+    await framesToVideo('/tmp/frames', frames, 30, '/tmp/output.mp4');
+
+    expect(writeFileMock).toHaveBeenCalled();
+    const concatCall = writeFileMock.mock.calls.find(
+      (call: string[]) => String(call[0]).endsWith('concat.txt'),
+    );
+    expect(concatCall).toBeDefined();
+    const concatBody = concatCall![1] as string;
+    expect(concatBody).toContain('frame_000000.png');
+    expect(concatBody).toContain('duration 1.000');
+    expect(concatBody).toContain('frame_000001.png');
+    expect(concatBody).toContain('frame_000002.png');
+  });
+
+  it('runs ffmpeg with image concat arguments', async () => {
+    const frames = makeFrames(2);
+    await framesToVideo('/tmp/frames', frames, 30, '/tmp/out.mp4');
+
+    expect(execFile).toHaveBeenCalled();
+    const callArgs = (execFile as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(callArgs[0]).toBe('ffmpeg');
+    expect(callArgs[1]).toContain('-f');
+    expect(callArgs[1]).toContain('concat');
+    expect(callArgs[1]).toContain('-safe');
+    expect(callArgs[1]).toContain('0');
+    expect(callArgs[1]).toContain('-c:v');
+    expect(callArgs[1]).toContain('libx264');
+    expect(callArgs[1]).toContain('-pix_fmt');
+    expect(callArgs[1]).toContain('yuv420p');
+  });
+
+  it('handles single frame gracefully', async () => {
+    const frames = makeFrames(1);
+    const fsMod = await import('node:fs');
+    const writeFileMock = fsMod.promises.writeFile as ReturnType<typeof vi.fn>;
+
+    await framesToVideo('/tmp/frames', frames, 30, '/tmp/single.mp4');
+
+    const concatCall = writeFileMock.mock.calls.find(
+      (call: string[]) => String(call[0]).endsWith('concat.txt'),
+    );
+    expect(concatCall).toBeDefined();
+    expect(concatCall![1]).toContain('duration 2.000');
+  });
+
+  it('handles zero frames gracefully', async () => {
+    const fsMod = await import('node:fs');
+    const writeFileMock = fsMod.promises.writeFile as ReturnType<typeof vi.fn>;
+
+    await framesToVideo('/tmp/frames', [], 30, '/tmp/empty.mp4');
+
+    const concatCall = writeFileMock.mock.calls.find(
+      (call: string[]) => String(call[0]).endsWith('concat.txt'),
+    );
+    expect(concatCall).toBeDefined();
+    expect(concatCall![1]).toBe('');
+  });
+
+  it('rejects when ffmpeg fails', async () => {
+    const mockExecFile = execFile as ReturnType<typeof vi.fn>;
+    mockExecFile.mockImplementationOnce((_cmd: string, _args: string[], cb: (error: Error, stdout: string, stderr: string) => void) => {
+      setImmediate(() => cb(new Error('ENOENT: ffmpeg not found'), '', ''));
+      return { on: vi.fn() };
+    });
+
+    await expect(framesToVideo('/tmp/frames', makeFrames(1), 30, '/tmp/fail.mp4')).rejects.toThrow(
+      'ffmpeg not found',
+    );
+  });
+
+  it('rejects when ffmpeg exits with non-zero code', async () => {
+    const mockExecFile = execFile as ReturnType<typeof vi.fn>;
+    mockExecFile.mockImplementationOnce((_cmd: string, _args: string[], cb: (error: null, stdout: string, stderr: string) => void) => {
+      const child = {
+        on: vi.fn().mockImplementation((event: string, handler: (code: number) => void) => {
+          if (event === 'close') {
+            setImmediate(() => handler(1));
+          }
+          return child;
+        }),
+      };
+      setImmediate(() => cb(null, '', ''));
+      return child;
+    });
+
+    await expect(framesToVideo('/tmp/frames', makeFrames(1), 30, '/tmp/fail.mp4')).rejects.toThrow(
+      'framesToVideo exited with code 1',
+    );
   });
 });

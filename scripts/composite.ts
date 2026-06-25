@@ -1,9 +1,29 @@
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import type { AudioSegment } from '../src/services/narrationAudioGenerator';
+
+export interface CompositeConfig {
+  videoPath: string;
+  audioPath: string;
+  outputPath: string;
+  ffmpegArgs: string[];
+}
+
+export interface CompositeResult {
+  outputPath: string;
+  durationMs: number;
+  fileSizeBytes: number;
+}
+
+export interface FrameRecord {
+  file: string;
+  timeMs: number;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function generateSilenceWav(filePath: string, durationMs: number): Promise<void> {
   const sampleRate = 44100;
@@ -95,6 +115,66 @@ export function executeComposite(config: CompositeConfig): Promise<CompositeResu
       } catch (err) {
         reject(err);
       }
+    });
+  });
+}
+
+export async function framesToVideo(
+  framesDir: string,
+  frameRecords: FrameRecord[],
+  fps: number,
+  outputPath: string,
+): Promise<void> {
+  const concatLines: string[] = [];
+  for (let i = 0; i < frameRecords.length; i++) {
+    const durationMs =
+      i < frameRecords.length - 1
+        ? frameRecords[i + 1].timeMs - frameRecords[i].timeMs
+        : 2000;
+    const durationSec = Math.max(durationMs / 1000, 1 / fps);
+    concatLines.push(`file '${frameRecords[i].file}'`);
+    concatLines.push(`duration ${durationSec.toFixed(3)}`);
+  }
+  if (frameRecords.length > 0) {
+    concatLines.push(`file '${frameRecords[frameRecords.length - 1].file}'`);
+  }
+
+  const concatPath = path.join(framesDir, 'concat.txt');
+  await fs.writeFile(concatPath, concatLines.join('\n'));
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-y',
+      '-f', 'concat',
+      '-safe', '0',
+      '-i', concatPath,
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '18',
+      '-pix_fmt', 'yuv420p',
+      '-r', String(fps),
+      outputPath,
+    ];
+
+    console.log(`[FramesToVideo] Running ffmpeg: ${args.join(' ')}`);
+    const child = execFile('ffmpeg', args, (error, _stdout, stderr) => {
+      if (error) {
+        console.error(`[FramesToVideo] ffmpeg error: ${stderr}`);
+        reject(error);
+        return;
+      }
+    });
+
+    child.on('close', async (code) => {
+      if (code !== 0) {
+        reject(new Error(`ffmpeg framesToVideo exited with code ${code}`));
+        return;
+      }
+      const stat = await fs.stat(outputPath);
+      console.log(
+        `[FramesToVideo] Created: ${outputPath} (${(stat.size / (1024 * 1024)).toFixed(1)}MB)`,
+      );
+      resolve();
     });
   });
 }

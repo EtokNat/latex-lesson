@@ -1,10 +1,11 @@
-import { chromium, type Browser, type Page } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright-core';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import type { Lesson } from '../src/data/types';
-import type { AbsoluteTimeline, TimelineEvent } from '../src/services/timelineBuilder';
+import type { AbsoluteTimeline } from '../src/services/timelineBuilder';
 import { waitForDOMStable } from './domStabilizer';
 import { saveCheckpoint, loadCheckpoint, clearCheckpoint } from './checkpointManager';
+import { framesToVideo, type FrameRecord } from './composite';
 
 export interface RecordingConfig {
   lesson: Lesson;
@@ -24,6 +25,14 @@ export interface RecordingResult {
 const PRE_ROLL_MS = 1500;
 const POST_ROLL_MS = 2000;
 const CHECKPOINT_BLOCK_INTERVAL = 5;
+
+function isTermux(): boolean {
+  return !!process.env.TERMUX_VERSION;
+}
+
+function getChromiumPath(): string {
+  return process.env.CHROMIUM_PATH || '/data/data/com.termux/files/usr/bin/chromium-browser';
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -56,6 +65,7 @@ async function walkTimeline(
   page: Page,
   timeline: AbsoluteTimeline,
   outputDir: string,
+  onFrame?: (frameNum: number, timeMs: number) => Promise<void>,
 ): Promise<{ blockIndex: number; revealCount: number }> {
   console.log(`[Recorder] Walking timeline: ${timeline.events.length} events, ${timeline.totalDurationMs}ms`);
   const startTime = Date.now();
@@ -83,6 +93,9 @@ async function walkTimeline(
         await page.keyboard.press('Space');
         revealCount++;
         await waitForDOMStable(page);
+        if (onFrame) {
+          await onFrame(revealCount, event.timeMs);
+        }
         break;
       case 'socratic_question':
         console.log(`[Recorder] Socratic question at ${event.timeMs}ms`);
@@ -116,22 +129,49 @@ export async function recordLesson(config: RecordingConfig): Promise<RecordingRe
   await fs.mkdir(config.outputDir, { recursive: true });
 
   let checkpointCount = 0;
-  const videoPath = path.join(config.outputDir, 'raw_video.webm');
+  const termux = isTermux();
 
   const existingCheckpoint = await loadCheckpoint(path.join(config.outputDir, 'checkpoint.json'));
   if (existingCheckpoint) {
     console.log(`[Recorder] Resuming from block ${existingCheckpoint.blockIndex}`);
   }
 
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    viewport: { width: config.resolution.width, height: config.resolution.height },
-    deviceScaleFactor: 2,
-    recordVideo: {
-      dir: config.outputDir,
-      size: { width: config.resolution.width, height: config.resolution.height },
-    },
-  });
+  console.log(`[Recorder] Environment: ${termux ? 'Termux (Android)' : 'Desktop'}`);
+
+  const browser = termux
+    ? await chromium.launch({
+        executablePath: getChromiumPath(),
+        headless: true,
+        args: ['--no-sandbox', '--disable-gpu'],
+      })
+    : await chromium.launch({ headless: true });
+
+  let videoPath: string;
+  let framesDir: string | undefined;
+  const frameRecords: FrameRecord[] = [];
+
+  if (termux) {
+    framesDir = path.join(config.outputDir, 'frames');
+    await fs.mkdir(framesDir, { recursive: true });
+    videoPath = path.join(config.outputDir, 'raw_video.mp4');
+    console.log('[Recorder] Termux detected — using screenshot-based recording');
+  } else {
+    videoPath = path.join(config.outputDir, 'raw_video.webm');
+  }
+
+  const context = termux
+    ? await browser.newContext({
+        viewport: { width: config.resolution.width, height: config.resolution.height },
+        deviceScaleFactor: 2,
+      })
+    : await browser.newContext({
+        viewport: { width: config.resolution.width, height: config.resolution.height },
+        deviceScaleFactor: 2,
+        recordVideo: {
+          dir: config.outputDir,
+          size: { width: config.resolution.width, height: config.resolution.height },
+        },
+      });
 
   const page = await context.newPage();
 
@@ -142,15 +182,45 @@ export async function recordLesson(config: RecordingConfig): Promise<RecordingRe
 
     await startPresentation(page);
 
+    if (framesDir) {
+      const initialFile = 'frame_000000.png';
+      await page.screenshot({ path: path.join(framesDir, initialFile), type: 'png' });
+      frameRecords.push({ file: initialFile, timeMs: 0 });
+      console.log('[Recorder] Captured initial frame');
+    }
+
     const startTime = Date.now();
-    const { blockIndex, revealCount } = await walkTimeline(page, config.timeline, config.outputDir);
+    const onFrame = framesDir
+      ? async (frameNum: number, timeMs: number) => {
+          const filename = `frame_${String(frameNum).padStart(6, '0')}.png`;
+          await page.screenshot({ path: path.join(framesDir, filename), type: 'png' });
+          frameRecords.push({ file: filename, timeMs });
+        }
+      : undefined;
+
+    const { blockIndex, revealCount } = await walkTimeline(
+      page,
+      config.timeline,
+      config.outputDir,
+      onFrame,
+    );
 
     const elapsed = Date.now() - startTime;
     if (POST_ROLL_MS > 0) {
       await sleep(POST_ROLL_MS);
+      if (onFrame) {
+        const finalTimeMs = config.timeline.totalDurationMs + POST_ROLL_MS;
+        await onFrame(revealCount + 1, finalTimeMs);
+      }
     }
 
     console.log(`[Recorder] Recording complete: ${elapsed}ms, ${revealCount} reveals, ${blockIndex} blocks`);
+
+    if (framesDir && frameRecords.length > 0) {
+      console.log(`[Recorder] Converting ${frameRecords.length} frames to video...`);
+      await framesToVideo(framesDir, frameRecords, config.fps, videoPath);
+      console.log(`[Recorder] Frame video created: ${videoPath}`);
+    }
   } finally {
     await context.close();
     await browser.close();

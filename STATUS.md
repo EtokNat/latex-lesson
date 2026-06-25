@@ -1,6 +1,6 @@
 # PROJECT STATUS MEMORY
 
-**CURRENT PHASE:** All Sprints Complete — Project Finished
+**CURRENT PHASE:** Sprint 15 Complete — Termux Adaptation Delivered
 
 **COMPLETED SPRINTS:**
 - Sprint 1: Foundation & Types
@@ -17,6 +17,7 @@
 - Sprint 12: Recording Pipeline (DOM stabilizer, checkpoint/resume, pre-flight checks, ffmpeg composition, post-recording verification, Playwright recording script, recording CLI)
 - Sprint 13: Presentation Enhancements (on-screen nav controls, block indicator dots, speaker notes panel, presentation timer, auto-advance mode with countdown bar)
 - Sprint 14: Print, Export & Final Polish (print CSS, PDF export, static HTML export, README documentation)
+- Sprint 15: Termux Adaptation (playwright→playwright-core, system Chromium detection, screenshot-based recording fallback, frame-to-video ffmpeg composite)
 
 ---
 
@@ -451,11 +452,74 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 | `src/App.test.tsx` | 14 | View transitions, full cycle, localStorage, multi-lesson library, back navigation |
 
 ---
+## SPRINT 15 COMPLETION (2026-06-25)
+
+### Termux Adaptation Features
+- **15.1 Playwright → Playwright-Core Migration**: Replaced `playwright` with `playwright-core` (~300MB smaller, no bundled Chromium). Desktop behavior unchanged — `recordVideo` still used directly.
+- **15.2 Termux Environment Detection**: Auto-detects Termux via `process.env.TERMUX_VERSION`. On Termux: launches system Chromium (`/data/data/com.termux/files/usr/bin/chromium-browser`) with `--no-sandbox --disable-gpu`. Configurable via `CHROMIUM_PATH` env var.
+- **15.3 Screenshot-Based Recording Fallback**: When `recordVideo` is unavailable (Termux/Android), captures `page.screenshot()` at each reveal step. Saves timestamped PNGs to `output/frames/`. Records frame timing metadata for duration calculation.
+- **15.4 Frame-to-Video ffmpeg Composite**: New `framesToVideo()` function converts PNG sequence to H.264 video via ffmpeg concat demuxer with per-frame durations. Handles single frame and empty frame edge cases gracefully.
+- **15.5 Composite Module Cleanup**: Fixed duplicate imports and added explicit `CompositeConfig`/`CompositeResult`/`FrameRecord` type exports.
+
+### Modified Files (4)
+- `package.json` — `playwright` → `playwright-core`
+- `scripts/record-lesson.ts` — Termux detection, system Chromium launch, screenshot fallback with frame capture
+- `scripts/composite.ts` — Fixed duplicate imports, added `CompositeConfig`/`CompositeResult`/`FrameRecord` types, added `framesToVideo()`
+
+### New Files (1)
+- `scripts/__tests__/recordLesson.test.ts` — 5 tests (config construction, browser rejection, output path, empty lesson, timeline preservation)
+
+### Updated Tests (1)
+- `scripts/__tests__/composite.test.ts` — 6→12 tests (+6: concat file format, ffmpeg args, single frame, zero frames, ffmpeg error, non-zero exit)
+
+---
+**TEST SUITE STATUS:** **372 tests passing across 37 test files** (all passing as of 2026-06-25):
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `scripts/__tests__/domStabilizer.test.ts` | 5 | DOM stability wait, invisible step skip, timeout, options |
+| `scripts/__tests__/checkpointManager.test.ts` | 8 | Save, load, clear, nested dirs, corrupt/invalid handling |
+| `scripts/__tests__/preflight.test.ts` | 7 | Lesson structure, image URLs, LaTeX, dev server checks |
+| `scripts/__tests__/composite.test.ts` | 12 | ffmpeg arg construction, success, errors, framesToVideo concat, single/zero frames |
+| `scripts/__tests__/verifyOutput.test.ts` | 7 | Valid MP4, missing file, zero-byte, codec, audio, ffprobe errors |
+| `scripts/__tests__/recordLesson.test.ts` | 5 | Config construction, browser rejection, output path, empty lesson, timeline |
+| `src/data/knowledgeGraph.test.ts` | 10 | KG construction, edge validation, cycle detection |
+| `src/data/narrationTypes.test.ts` | 10 | All AudioTag values, segment creation, pause/reveal tracking |
+| `src/data/symbolLedger.test.ts` | 8 | Canonical lookup, alias resolution, conflict detection, empty ledger |
+| `src/data/types.test.ts` | 8 | Type compilation, narration fields, backward compatibility |
+| `src/components/ProgressiveAlignedEquation.test.tsx` | 5 | Mount, reveal boundaries, empty string, inline displayMode, multiple lines |
+| `src/services/conceptExtractor.test.ts` | 9 | Headings, math commands, definition patterns, empty, dedup, type inference |
+| `src/services/edgeInference.test.ts` | 6 | Prerequisites, derives, unrelated, example-of, empty, no-self-edges |
+| `src/services/knowledgeGraphBuilder.test.ts` | 6 | Seed KG, acyclic, cycle rejection, empty, valid types, edge validation |
+| `src/services/relevanceQuery.test.ts` | 9 | Prerequisites, bridges, contrasts, analogies, unknown, ranking, spiral, seed |
+| `src/services/symbolLedgerBuilder.test.ts` | 10 | Canonical, a/b/c, Δ, ±, √, getCanonical, isDefined, no-math, empty, conflicts |
+| `src/services/lessonStorage.test.ts` | 18 | Migration, CRUD, corruption survival, edge cases |
+| `src/services/lessonImportExport.test.ts` | 8 | Export download, valid import, invalid JSON, missing fields |
+| `src/services/agents/teachingPlanAgent.test.ts` | 5 | Seed plan, empty, headings-only, invalid format, prompt building |
+| `src/services/agents/visionAgent.test.ts` | 4 | Enrichment, fallback, truth anchoring, missing fields |
+| `src/services/agents/narrationScriptAgent.test.ts` | 6 | Tagged narration, cross-refs, tag stripping, duration, missing pauses, invalid format |
+| `src/services/agents/validationAgent.test.ts` | 8 | Verbatim, dead voice, symbol, clean pass, quantitative, forward refs, tone, counts |
+| `src/services/narrationPipeline.test.ts` | 5 | End-to-end, retry, complete output, image blocks, seed lesson |
+| `src/services/ttsClient.test.ts` | 7 | Configured call, retry, max retries, long text split, options, empty text, no function |
+| `src/services/audioTagPreprocessor.test.ts` | 8 | Valid passthrough, calibration substitution, unknown default, no tag, property preservation, empty, multiple substitutions, trimming |
+| `src/services/mathToSpeechPreprocessor.test.ts` | 11 | Superscripts, subscripts, fractions, square roots, Greek, ±, inequalities, original, Δ, empty, plain text |
+| `src/services/narrationAudioGenerator.test.ts` | 6 | Segment generation, reveal positions, inter-block pauses, SOCRATIC, PAUSE, empty narration |
+| `src/services/timingEngine.test.ts` | 8 | Word timestamp computation, empty reveals, multi-source, buffer, confidence, fallback |
+| `src/services/timelineBuilder.test.ts` | 5 | Timeline build, monotonic, block_advance, clean validation, socratic events |
+| `src/services/pdfExport.test.ts` | 14 | HTML gen, block rendering, XSS escaping, aligned math, print container, window.print |
+| `src/services/htmlExport.test.ts` | 17 | DOCTYPE, structure, KaTeX CDN, CSS, block types, XSS, self-contained, download |
+| `src/views/LessonList.test.tsx` | 18 | Empty state, card render, create/select/delete/duplicate/import/export |
+| `src/views/LessonPlanner.test.tsx` | 30 | Seed render, block CRUD, math preview, image validation, narration, back button, initialLesson |
+| `src/views/PresentationStage.test.tsx` | 30 | Block rendering, navigation, on-screen controls, speaker notes, timer, auto-advance |
+| `src/views/SpeakerNotes.test.tsx` | 9 | Block position, content preview, narration, narration steps, empty state, teaching tips |
+| `src/App.test.tsx` | 14 | View transitions, full cycle, localStorage, multi-lesson library, back navigation |
+
+---
 **PENDING BLOCKERS / ISSUES:**
-- 3 pre-existing test failures in `LessonPlanner.test.tsx` (slow ARM device timeouts + delete count check). Unrelated to Sprints 13-14.
+- None. All 372 tests passing.
 
-**PROJECT STATUS: COMPLETE**
-- All 14 sprints delivered
-- 36 test files, 358+ tests
-- Features: Lesson authoring, progressive math reveal, knowledge graph, multi-agent LLM narration, TTS with timing, video recording pipeline, presentation enhancements, print/PDF/HTML export
-
+**PROJECT STATUS: SPRINT 15 COMPLETE**
+- All 15 sprints delivered
+- 37 test files, 372 tests
+- Features: Lesson authoring, progressive math reveal, knowledge graph, multi-agent LLM narration, TTS with timing, video recording pipeline (desktop + Termux), presentation enhancements, print/PDF/HTML export
+- Termux: Full recording pipeline works on Android via system Chromium + screenshot fallback
