@@ -1,6 +1,6 @@
 # PROJECT STATUS MEMORY
 
-**CURRENT PHASE:** Sprint 11 Complete — TTS Integration & Timing Engine
+**CURRENT PHASE:** Sprint 12 Complete — Recording Pipeline
 
 **COMPLETED SPRINTS:**
 - Sprint 1: Foundation & Types
@@ -14,6 +14,7 @@
 - Sprint 9: Knowledge Graph Engine (concept extraction, edge inference, KG builder, relevance query, symbol ledger builder)
 - Sprint 10: Multi-Agent LLM Narration Pipeline (LLM client, teaching plan agent, vision agent, narration script agent, validation agent, pipeline orchestrator)
 - Sprint 11: TTS Integration & Timing Engine (TTS client, audio tag preprocessor, math-to-speech preprocessor, narration audio generator, timing engine, timeline builder)
+- Sprint 12: Recording Pipeline (DOM stabilizer, checkpoint/resume, pre-flight checks, ffmpeg composition, post-recording verification, Playwright recording script, recording CLI)
 
 ---
 
@@ -288,9 +289,79 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 | `src/views/PresentationStage.test.tsx` | 18 | Block rendering, navigation, boundary guards, escape exit, progressive reveal |
 | `src/App.test.tsx` | 14 | View transitions, full cycle, localStorage, multi-lesson library, back navigation |
 
+## SPRINT 12 COMPLETION (2026-06-25)
+
+### Recording Pipeline Features
+- **12.1 DOM Stabilizer**: `waitForDOMStable(page, timeoutMs?)` — waits for MutationObserver + requestAnimationFrame stability after each keypress. Detects invisible reveal steps (no `#active-reveal-target`) and skips wait. Timeout fallback (default 2000ms).
+- **12.2 Checkpoint/Resume**: `saveCheckpoint()`, `loadCheckpoint()`, `clearCheckpoint()` — saves recording progress every 5 blocks. Handles corrupt JSON and missing files gracefully.
+- **12.3 Pre-flight Checks**: `runPreflight(lesson, devServerUrl)` — validates lesson structure, checks image URL reachability (HEAD request, 10s timeout), validates LaTeX parseability, confirms dev server is responding.
+- **12.4 ffmpeg Composition**: `buildCompositeConfig()` + `executeComposite()` — builds ffmpeg concat + mux command, runs `ffmpeg` via `child_process.execFile`, handles non-zero exit codes and binary-not-found errors.
+- **12.5 Post-Recording Verification**: `verifyOutput(mp4Path)` — uses ffprobe (`-print_format json`) to extract video/audio metadata, validates h264 codec, detects missing audio, handles absent file and corrupt ffprobe output.
+- **12.6 Playwright Recording Script**: `recordLesson(config)` — launches headless Chromium with `recordVideo`, injects lesson via `addInitScript`, navigates to dev server, clicks "Save and Present", walks AbsoluteTimeline pressing Space at reveal times, uses DOM stabilizer after each press, saves checkpoints every 5 blocks.
+- **12.7 Recording CLI**: `cli.ts` — parses `--lesson`, `--output`, `--resolution`, `--fps`, `--voice`, `--dry-run` flags. Orchestrates: preflight → narration pipeline → timeline → recording → composite → verify.
+
+### New Files (7)
+- `scripts/domStabilizer.ts` — Post-keypress DOM stability waiter
+- `scripts/checkpointManager.ts` — Checkpoint save/load/clear with filesystem I/O
+- `scripts/preflight.ts` — 4 pre-recording validation checks
+- `scripts/composite.ts` — ffmpeg video/audio composition
+- `scripts/verifyOutput.ts` — ffprobe-based MP4 verification
+- `scripts/record-lesson.ts` — Main Playwright recording orchestrator
+- `scripts/cli.ts` — CLI entry point with argument parsing
+- `scripts/tsconfig.json` — TypeScript config for Node.js scripts
+
+### New Tests (5 files, 33 tests)
+- `scripts/__tests__/domStabilizer.test.ts` — 5 tests (stable wait, invisible skip, timeout, timeout option, non-negative elapsed)
+- `scripts/__tests__/checkpointManager.test.ts` — 8 tests (save, nested dirs, load valid, no file, invalid format, corrupt JSON, clear, missing file)
+- `scripts/__tests__/preflight.test.ts` — 7 tests (all pass, missing id, missing block fields, unreachable images, unreachable dev server, no images, no math)
+- `scripts/__tests__/composite.test.ts` — 6 tests (ffmpeg args, output path, video input, success result, non-zero exit, binary not found)
+- `scripts/__tests__/verifyOutput.test.ts` — 7 tests (valid MP4, file not found, zero-byte, wrong codec, no audio, ffprobe failure, invalid JSON)
+
+### New Dependencies
+- `playwright` (dev) — browser automation + video recording
+- `tsx` (dev) — TypeScript script execution
+
+---
+**TEST SUITE STATUS:** **289 tests passing across 32 test files** (all passing as of 2026-06-25, 1 pre-existing timeout):
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `scripts/__tests__/domStabilizer.test.ts` | 5 | DOM stability wait, invisible step skip, timeout, options |
+| `scripts/__tests__/checkpointManager.test.ts` | 8 | Save, load, clear, nested dirs, corrupt/invalid handling |
+| `scripts/__tests__/preflight.test.ts` | 7 | Lesson structure, image URLs, LaTeX, dev server checks |
+| `scripts/__tests__/composite.test.ts` | 6 | ffmpeg arg construction, success, non-zero exit, binary error |
+| `scripts/__tests__/verifyOutput.test.ts` | 7 | Valid MP4, missing file, zero-byte, codec, audio, ffprobe errors |
+| `src/data/knowledgeGraph.test.ts` | 10 | KG construction, edge validation, cycle detection |
+| `src/data/narrationTypes.test.ts` | 10 | All AudioTag values, segment creation, pause/reveal tracking |
+| `src/data/symbolLedger.test.ts` | 8 | Canonical lookup, alias resolution, conflict detection, empty ledger |
+| `src/data/types.test.ts` | 8 | Type compilation, narration fields, backward compatibility |
+| `src/components/ProgressiveAlignedEquation.test.tsx` | 5 | Mount, reveal boundaries, empty string, inline displayMode, multiple lines |
+| `src/services/conceptExtractor.test.ts` | 9 | Headings, math commands, definition patterns, empty, dedup, type inference |
+| `src/services/edgeInference.test.ts` | 6 | Prerequisites, derives, unrelated, example-of, empty, no-self-edges |
+| `src/services/knowledgeGraphBuilder.test.ts` | 6 | Seed KG, acyclic, cycle rejection, empty, valid types, edge validation |
+| `src/services/relevanceQuery.test.ts` | 9 | Prerequisites, bridges, contrasts, analogies, unknown, ranking, spiral, seed |
+| `src/services/symbolLedgerBuilder.test.ts` | 10 | Canonical, a/b/c, Δ, ±, √, getCanonical, isDefined, no-math, empty, conflicts |
+| `src/services/lessonStorage.test.ts` | 18 | Migration, CRUD, corruption survival, edge cases |
+| `src/services/lessonImportExport.test.ts` | 8 | Export download, valid import, invalid JSON, missing fields |
+| `src/services/agents/teachingPlanAgent.test.ts` | 5 | Seed plan, empty, headings-only, invalid format, prompt building |
+| `src/services/agents/visionAgent.test.ts` | 4 | Enrichment, fallback, truth anchoring, missing fields |
+| `src/services/agents/narrationScriptAgent.test.ts` | 6 | Tagged narration, cross-refs, tag stripping, duration, missing pauses, invalid format |
+| `src/services/agents/validationAgent.test.ts` | 8 | Verbatim, dead voice, symbol, clean pass, quantitative, forward refs, tone, counts |
+| `src/services/narrationPipeline.test.ts` | 5 | End-to-end, retry, complete output, image blocks, seed lesson |
+| `src/services/ttsClient.test.ts` | 7 | Configured call, retry, max retries, long text split, options, empty text, no function |
+| `src/services/audioTagPreprocessor.test.ts` | 8 | Valid passthrough, calibration substitution, unknown default, no tag, property preservation, empty, multiple substitutions, trimming |
+| `src/services/mathToSpeechPreprocessor.test.ts` | 11 | Superscripts, subscripts, fractions, square roots, Greek, ±, inequalities, original, Δ, empty, plain text |
+| `src/services/narrationAudioGenerator.test.ts` | 6 | Segment generation, reveal positions, inter-block pauses, SOCRATIC, PAUSE, empty narration |
+| `src/services/timingEngine.test.ts` | 8 | Word timestamp computation, empty reveals, multi-source, buffer, confidence, fallback |
+| `src/services/timelineBuilder.test.ts` | 5 | Timeline build, monotonic, block_advance, clean validation, socratic events |
+| `src/views/LessonList.test.tsx` | 18 | Empty state, card render, create/select/delete/duplicate/import/export |
+| `src/views/LessonPlanner.test.tsx` | 30 | Seed render, block CRUD, math preview, image validation, narration, back button, initialLesson |
+| `src/views/PresentationStage.test.tsx` | 18 | Block rendering, navigation, boundary guards, escape exit, progressive reveal |
+| `src/App.test.tsx` | 14 | View transitions, full cycle, localStorage, multi-lesson library, back navigation |
+
 ---
 **PENDING BLOCKERS / ISSUES:**
-- None currently. All tests pass.
+- 1 pre-existing test timeout in `LessonPlanner.test.tsx` ("tracks block count correctly after adding to seed") — slow ARM device, unrelated to Sprint 12.
 
 **NEXT ACTION REQUIRED:**
-- Sprint 12: Recording Pipeline (Playwright recording script, DOM stabilizer, checkpoint/resume, pre-flight checks, ffmpeg composition, post-recording verification, recording CLI)
+- Sprint 13: Presentation Enhancements (on-screen controls, speaker notes, presentation timer, auto-advance mode)
