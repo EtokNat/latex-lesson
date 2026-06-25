@@ -841,15 +841,15 @@
 |--------|------|---------------|----------------|------------|
 | 1-5 | Foundation → Orchestration | 9 files | — | 43 ✅ |
 | Post-5 | Hardening & Seed | 2 files | — | 43 ✅ |
-| 6 | Type Extension & Data Model | 4 files | Sprint 5 | ~55 |
-| 7 | Editor Hardening | 1 file modified | Sprint 6 | ~55 |
-| 8 | Multi-Lesson Management | 4 files | Sprint 7 | ~70 |
-| 9 | Knowledge Graph Engine | 5 files | Sprint 6 | ~90 |
-| 10 | LLM Narration Pipeline | 7 files | Sprint 9 | ~110 |
-| 11 | TTS & Timing Engine | 6 files | Sprint 10 | ~130 |
-| 12 | Recording Pipeline | 8 files | Sprint 11 | ~145 |
-| 13 | Presentation Enhancements | 2 files | Sprint 7, 11 | ~155 |
-| 14 | Print, Export & Polish | 3 files | Sprint 12, 13 | ~160 |
+| 6 | Type Extension & Data Model | 4 files | Sprint 5 | 36 ✅ |
+| 7 | Editor Hardening | 1 file modified | Sprint 6 | 56 ✅ |
+| 8 | Multi-Lesson Management | 4 files | Sprint 7 | 66 ✅ |
+| 9 | Knowledge Graph Engine | 5 files | Sprint 6 | 40 ✅ |
+| 10 | LLM Narration Pipeline | 7 files | Sprint 9 | 28 ✅ |
+| 11 | TTS & Timing Engine | 6 files | Sprint 10 | 45 ✅ |
+| 12 | Recording Pipeline | 8 files | Sprint 11 | 33 ✅ |
+| 13 | Presentation Enhancements | 2 files | Sprint 7, 11 | 39 ✅ |
+| 14 | Print, Export & Polish | 3 files | Sprint 12, 13 | 31 ✅ |
 
 ## TEST COVERAGE TARGET
 

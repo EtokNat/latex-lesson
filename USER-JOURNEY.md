@@ -1,6 +1,6 @@
 # USER JOURNEY — MATH PRESENTATION STUDIO
 
-Complete application map through Sprint 12: every screen, state, interaction, edge case, and file.
+Complete application map through Sprint 14: every screen, state, interaction, edge case, and file.
 
 ---
 
@@ -362,6 +362,12 @@ Previous limitations now resolved:
 - LLM narration pipeline ✓ (Sprint 10)
 - TTS & timing engine ✓ (Sprint 11)
 - Video recording pipeline ✓ (Sprint 12)
+- On-screen presentation controls ✓ (Sprint 13)
+- Speaker notes panel ✓ (Sprint 13)
+- Presentation timer ✓ (Sprint 13)
+- Auto-advance mode ✓ (Sprint 13)
+- PDF print export ✓ (Sprint 14)
+- Static HTML export ✓ (Sprint 14)
 
 ---
 
@@ -397,7 +403,10 @@ Previous limitations now resolved:
 | `[Verify]` | `scripts/verifyOutput.ts` |
 | `[Recorder]` | `scripts/record-lesson.ts` |
 | `[CLI]` | `scripts/cli.ts` |
+| `[SpeakerNotes]` | `src/views/SpeakerNotes.tsx` |
+| `[PDFExport]` | `src/services/pdfExport.ts` |
+| `[HTMLExport]` | `src/services/htmlExport.ts` |
 
 ---
 
-*Document version: 2.0 | Generated: 2026-06-25 | App version: Sprint 12 Complete*
+*Document version: 3.0 | Generated: 2026-06-25 | App version: Sprint 14 Complete*

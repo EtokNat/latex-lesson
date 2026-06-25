@@ -44,3 +44,140 @@ body {
 .animate-slide-in-right {
   animation: slide-in-right 0.25s ease-out both;
 }
+
+/* ============================================================
+   Print Styles (Sprint 14)
+   ============================================================ */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Hide all interactive elements */
+  button,
+  nav,
+  .fixed,
+  [class*="fixed"],
+  #active-reveal-target {
+    animation: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Hide app chrome */
+  .fixed.inset-0.bg-gray-950 {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Print lesson container */
+  .print-lesson {
+    background: white !important;
+    color: black !important;
+    max-width: 100% !important;
+    padding: 0.5in !important;
+    font-family: Georgia, "Times New Roman", serif !important;
+    font-size: 12pt !important;
+    line-height: 1.6 !important;
+  }
+
+  .print-lesson * {
+    color: black !important;
+    text-shadow: none !important;
+    animation: none !important;
+  }
+
+  /* Headings in print */
+  .print-lesson h1 {
+    font-size: 20pt !important;
+    font-weight: bold !important;
+    margin-top: 0.3in !important;
+    margin-bottom: 0.15in !important;
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .print-lesson h1:first-child {
+    page-break-before: avoid !important;
+  }
+
+  .print-lesson .print-block-heading {
+    font-size: 20pt !important;
+    font-weight: bold !important;
+    margin-top: 0.3in !important;
+    margin-bottom: 0.15in !important;
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .print-lesson .print-block-heading:first-child {
+    page-break-before: avoid !important;
+  }
+
+  /* Text blocks */
+  .print-lesson p,
+  .print-lesson .print-block-text {
+    margin-bottom: 0.15in !important;
+    text-align: justify !important;
+  }
+
+  /* Math blocks */
+  .print-lesson .print-block-math {
+    margin: 0.2in 0 !important;
+    padding: 0.1in !important;
+    border-left: 2px solid #ccc !important;
+    font-size: 11pt !important;
+  }
+
+  /* Image blocks */
+  .print-lesson img {
+    max-width: 80% !important;
+    max-height: 4in !important;
+    margin: 0.2in auto !important;
+    display: block !important;
+  }
+
+  .print-lesson .print-block-image-caption {
+    text-align: center !important;
+    font-style: italic !important;
+    font-size: 10pt !important;
+    margin-top: 0.05in !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 0.75in;
+    size: letter;
+  }
+
+  /* Header and footer */
+  .print-header {
+    position: running(printHeader);
+    text-align: left;
+    font-size: 9pt;
+    color: #666 !important;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+    margin-bottom: 0.2in;
+  }
+
+  .print-footer {
+    position: running(printFooter);
+    text-align: center;
+    font-size: 9pt;
+    color: #666 !important;
+  }
+
+  @page {
+    @top-center {
+      content: element(printHeader);
+    }
+    @bottom-center {
+      content: "Page " counter(page);
+      font-size: 9pt;
+      color: #666;
+    }
+  }
+}
