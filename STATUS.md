@@ -1,6 +1,6 @@
 # PROJECT STATUS MEMORY
 
-**CURRENT PHASE:** Sprint 10 Complete — Multi-Agent LLM Narration Pipeline
+**CURRENT PHASE:** Sprint 11 Complete — TTS Integration & Timing Engine
 
 **COMPLETED SPRINTS:**
 - Sprint 1: Foundation & Types
@@ -13,6 +13,7 @@
 - Sprint 8: Multi-Lesson Management (lesson library, CRUD service, import/export, LessonList view, backward-compatible migration)
 - Sprint 9: Knowledge Graph Engine (concept extraction, edge inference, KG builder, relevance query, symbol ledger builder)
 - Sprint 10: Multi-Agent LLM Narration Pipeline (LLM client, teaching plan agent, vision agent, narration script agent, validation agent, pipeline orchestrator)
+- Sprint 11: TTS Integration & Timing Engine (TTS client, audio tag preprocessor, math-to-speech preprocessor, narration audio generator, timing engine, timeline builder)
 
 ---
 
@@ -228,9 +229,68 @@ All files have aggressive, prefixed console.log statements per CLAUDE.md require
 | `src/views/PresentationStage.test.tsx` | 18 | Block rendering, navigation, boundary guards, escape exit, progressive reveal |
 | `src/App.test.tsx` | 14 | View transitions, full cycle, localStorage, multi-lesson library, back navigation |
 
+## SPRINT 11 COMPLETION (2026-06-25)
+
+### TTS Integration & Timing Engine Features
+- **11.1 TTS Client**: Abstract `generateSpeech()` with configurable `TTSFunction`. Retry logic (3 attempts, exponential backoff). Character limit handling with sentence-boundary segmentation. Cost tracking per character. Automatic chunk merging for long text.
+- **11.2 Audio Tag Preprocessor**: Validates `[emotional_tag]` markers against known TTS-compatible tags. Configurable tag substitution map via `calibrateTagSubstitutions()`. Unknown tags defaulted to "measured" with substitution reporting.
+- **11.3 Math-to-Speech Preprocessor**: Converts LaTeX math notation to spoken English. Handles superscripts (squared, cubed, to the n), subscripts, fractions, square roots, Greek letters, inequality operators, and more. Returns both spoken and original forms.
+- **11.4 Narration Audio Generator**: Splits narration at `{REVEAL}`, `{SOCRATIC}`, and `{PAUSE:N}` markers. Generates `AudioSegment` array with duration estimation, reveal trigger positions, and silence gaps. Inter-block pauses from `LessonNarration`.
+- **11.5 Word-Level Timing Engine**: Computes precise reveal timings from TTS word timestamps. Multi-source reconciliation (primary/secondary/tertiary) with median aggregation. Confidence levels (high/medium/low). 300ms buffer applied before each reveal.
+- **11.6 Absolute Timeline Builder**: Builds `AbsoluteTimeline` from audio segments + reveal timings. Event types: `lesson_start`, `reveal`, `block_advance`, `pause_start`, `pause_end`, `socratic_question`, `lesson_end`. Validates monotonic timestamps and reveal-within-block constraints.
+
+### New Files (6)
+- `src/services/ttsClient.ts` — TTS API abstraction with retry, cost tracking, chunking
+- `src/services/audioTagPreprocessor.ts` — Tag validation and voice calibration substitutions
+- `src/services/mathToSpeechPreprocessor.ts` — LaTeX math to spoken English conversion
+- `src/services/narrationAudioGenerator.ts` — Narration splitting and audio segment generation
+- `src/services/timingEngine.ts` — Word-level reveal timing with multi-source reconciliation
+- `src/services/timelineBuilder.ts` — Absolute timeline construction with validation
+
+### New Tests (6 files, 45 tests)
+- `src/services/ttsClient.test.ts` — 7 tests (configured call, retry, max retries, long text split, options passthrough, empty text, no function)
+- `src/services/audioTagPreprocessor.test.ts` — 8 tests (valid passthrough, calibration substitution, unknown default, no tag, property preservation, empty, multiple substitutions, trimming)
+- `src/services/mathToSpeechPreprocessor.test.ts` — 11 tests (superscripts, subscripts, fractions, square roots, Greek letters, ±, inequalities, original preservation, Δ, empty, plain text)
+- `src/services/narrationAudioGenerator.test.ts` — 6 tests (segment generation, reveal positions, inter-block pauses, SOCRATIC pauses, PAUSE markers, empty narration)
+- `src/services/timingEngine.test.ts` — 8 tests (word timestamp computation, empty reveals, empty timestamps, single/multi-source reconciliation, buffer, confidence levels, graceful fallback)
+- `src/services/timelineBuilder.test.ts` — 5 tests (timeline build, monotonic timestamps, block_advance, clean validation, socratic events)
+
+---
+**TEST SUITE STATUS:** **257 tests passing across 27 test files** (all passing as of 2026-06-25):
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `src/data/knowledgeGraph.test.ts` | 10 | KG construction, edge validation, cycle detection |
+| `src/data/narrationTypes.test.ts` | 10 | All AudioTag values, segment creation, pause/reveal tracking |
+| `src/data/symbolLedger.test.ts` | 8 | Canonical lookup, alias resolution, conflict detection, empty ledger |
+| `src/data/types.test.ts` | 8 | Type compilation, narration fields, backward compatibility |
+| `src/components/ProgressiveAlignedEquation.test.tsx` | 5 | Mount, reveal boundaries, empty string, inline displayMode, multiple lines |
+| `src/services/conceptExtractor.test.ts` | 9 | Headings, math commands, definition patterns, empty, dedup, type inference |
+| `src/services/edgeInference.test.ts` | 6 | Prerequisites, derives, unrelated, example-of, empty, no-self-edges |
+| `src/services/knowledgeGraphBuilder.test.ts` | 6 | Seed KG, acyclic, cycle rejection, empty, valid types, edge validation |
+| `src/services/relevanceQuery.test.ts` | 9 | Prerequisites, bridges, contrasts, analogies, unknown, ranking, spiral, seed |
+| `src/services/symbolLedgerBuilder.test.ts` | 10 | Canonical, a/b/c, Δ, ±, √, getCanonical, isDefined, no-math, empty, conflicts |
+| `src/services/lessonStorage.test.ts` | 18 | Migration, CRUD, corruption survival, edge cases |
+| `src/services/lessonImportExport.test.ts` | 8 | Export download, valid import, invalid JSON, missing fields |
+| `src/services/agents/teachingPlanAgent.test.ts` | 5 | Seed plan, empty, headings-only, invalid format, prompt building |
+| `src/services/agents/visionAgent.test.ts` | 4 | Enrichment, fallback, truth anchoring, missing fields |
+| `src/services/agents/narrationScriptAgent.test.ts` | 6 | Tagged narration, cross-refs, tag stripping, duration, missing pauses, invalid format |
+| `src/services/agents/validationAgent.test.ts` | 8 | Verbatim, dead voice, symbol, clean pass, quantitative, forward refs, tone, counts |
+| `src/services/narrationPipeline.test.ts` | 5 | End-to-end, retry, complete output, image blocks, seed lesson |
+| `src/services/ttsClient.test.ts` | 7 | Configured call, retry, max retries, long text split, options, empty text, no function |
+| `src/services/audioTagPreprocessor.test.ts` | 8 | Valid passthrough, calibration substitution, unknown default, no tag, property preservation, empty, multiple substitutions, trimming |
+| `src/services/mathToSpeechPreprocessor.test.ts` | 11 | Superscripts, subscripts, fractions, square roots, Greek, ±, inequalities, original, Δ, empty, plain text |
+| `src/services/narrationAudioGenerator.test.ts` | 6 | Segment generation, reveal positions, inter-block pauses, SOCRATIC, PAUSE, empty narration |
+| `src/services/timingEngine.test.ts` | 8 | Word timestamp computation, empty reveals, multi-source, buffer, confidence, fallback |
+| `src/services/timelineBuilder.test.ts` | 5 | Timeline build, monotonic, block_advance, clean validation, socratic events |
+| `src/views/LessonList.test.tsx` | 18 | Empty state, card render, create/select/delete/duplicate/import/export |
+| `src/views/LessonPlanner.test.tsx` | 30 | Seed render, block CRUD, math preview, image validation, narration, back button, initialLesson |
+| `src/views/PresentationStage.test.tsx` | 18 | Block rendering, navigation, boundary guards, escape exit, progressive reveal |
+| `src/App.test.tsx` | 14 | View transitions, full cycle, localStorage, multi-lesson library, back navigation |
+
 ---
 **PENDING BLOCKERS / ISSUES:**
 - None currently. All tests pass.
 
 **NEXT ACTION REQUIRED:**
-- Sprint 11: TTS Integration & Timing Engine (TTS client, audio tag preprocessor, math-to-speech preprocessor, narration audio generator, timing engine, timeline builder)
+- Sprint 12: Recording Pipeline (Playwright recording script, DOM stabilizer, checkpoint/resume, pre-flight checks, ffmpeg composition, post-recording verification, recording CLI)
