@@ -78,7 +78,7 @@ export async function generateTeachingPlan(
 
   try {
     const result = await generateCompletion(TEACHING_PLAN_SYSTEM_PROMPT, userPrompt, {
-      maxTokens: 4096,
+      maxTokens: 8192,
       temperature: 0.3,
     });
 

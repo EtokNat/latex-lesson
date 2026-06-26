@@ -246,6 +246,14 @@ export async function recordLesson(config: RecordingConfig): Promise<RecordingRe
       console.log(`[Recorder] Frame video created: ${videoPath}`);
     }
   } finally {
+    if (!termux) {
+      const pageVideo = page.video();
+      if (pageVideo) {
+        const actualPath = pageVideo.path();
+        console.log(`[Recorder] Playwright video path: ${actualPath}`);
+        videoPath = actualPath;
+      }
+    }
     await context.close();
     await browser.close();
   }
