@@ -75,9 +75,13 @@ async function startServer(port: number): Promise<ChildProcess> {
   while (Date.now() - startTime < timeoutMs) {
     try {
       const res = await fetch(url);
-      if (res.ok || res.status < 500) {
-        console.log(`[CIRunner] Server ready after ${Date.now() - startTime}ms`);
-        return server;
+      if (res.status === 200) {
+        const text = await res.text();
+        if (text.includes('<!DOCTYPE') || text.includes('<div id=')) {
+          console.log(`[CIRunner] Server ready after ${Date.now() - startTime}ms`);
+          await new Promise((r) => setTimeout(r, 1000));
+          return server;
+        }
       }
     } catch {
       // server not ready yet

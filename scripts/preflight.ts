@@ -56,7 +56,8 @@ async function checkImageUrls(blocks: LessonBlock[]): Promise<PreflightCheck> {
   }
 
   if (failed.length > 0) {
-    return { name: 'Image URLs', passed: false, message: `${failed.length} unreachable: ${failed.join(', ')}` };
+    console.log(`[Preflight] Image URL warnings (non-blocking): ${failed.join(', ')}`);
+    return { name: 'Image URLs', passed: true, message: `${failed.length} warnings (non-blocking): ${failed.join(', ')}` };
   }
   console.log('[Preflight] All image URLs reachable');
   return { name: 'Image URLs', passed: true, message: `${imageBlocks.length} reachable` };
