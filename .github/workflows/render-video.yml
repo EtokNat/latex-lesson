@@ -1,0 +1,68 @@
+name: Render Video Lesson
+
+on:
+  workflow_dispatch:
+    inputs:
+      lesson:
+        description: 'Lesson to render ("seed" or path to JSON file in repo)'
+        required: true
+        default: 'seed'
+      resolution:
+        description: 'Output resolution (WxH)'
+        required: false
+        default: '1920x1080'
+      fps:
+        description: 'Frames per second'
+        required: false
+        default: '30'
+      voice:
+        description: 'Voice provider ("espeak" for free, or ElevenLabs voice ID for premium)'
+        required: false
+        default: 'espeak'
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright-core install chromium
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run CI pipeline
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          npm run ci -- \
+            --lesson ${{ inputs.lesson }} \
+            --resolution ${{ inputs.resolution }} \
+            --fps ${{ inputs.fps }} \
+            --voice ${{ inputs.voice }}
+
+      - name: Upload rendered video
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-lesson
+          path: output/final.mp4
+          retention-days: 7

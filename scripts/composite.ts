@@ -57,9 +57,44 @@ export async function buildCompositeConfig(
   segments: readonly AudioSegment[],
   videoPath: string,
   outputPath: string,
+  voiceId?: string,
 ): Promise<CompositeConfig> {
   const workDir = path.dirname(outputPath);
+  await fs.mkdir(workDir, { recursive: true });
+
+  const safeSegments =
+    segments.length > 0 ? segments : [{ segmentIndex: 0, blockId: 'fallback', text: '', durationMs: 500, revealTrigger: false, hasSocraticPause: false, socraticPauseSeconds: 0, pauseAfterMs: 0, isSilence: true } as AudioSegment];
+
+  const concatLines: string[] = [];
+  for (let i = 0; i < safeSegments.length; i++) {
+    const seg = safeSegments[i];
+    const durationMs = Math.max(seg.durationMs, 100);
+    const wavName = `audio_${String(i).padStart(4, '0')}.wav`;
+    const wavPath = path.join(workDir, wavName);
+
+    if (seg.isSilence || seg.text.trim().length === 0) {
+      await generateSilenceWav(wavPath, durationMs);
+    } else {
+      let ttsSuccess = false;
+      try {
+        const { generateSpeech } = await import('../src/services/ttsClient');
+        const ttsResult = await generateSpeech(seg.text, voiceId || 'default');
+        await fs.writeFile(wavPath, Buffer.from(ttsResult.audioBuffer));
+        ttsSuccess = true;
+        console.log(`[Composite] TTS audio generated: ${wavName} (${durationMs}ms)`);
+      } catch (err) {
+        console.warn(`[Composite] TTS unavailable for segment ${i}, falling back to silence: ${err}`);
+      }
+      if (!ttsSuccess) {
+        await generateSilenceWav(wavPath, durationMs);
+      }
+    }
+
+    concatLines.push(`file '${wavPath}'`);
+  }
+
   const concatListPath = path.join(workDir, 'concat_list.txt');
+  await fs.writeFile(concatListPath, concatLines.join('\n'));
 
   const ffmpegArgs = [
     '-y',

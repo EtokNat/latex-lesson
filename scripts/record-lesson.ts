@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Page } from 'playwright-core';
+import type { Browser, Page } from 'playwright-core';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import type { Lesson } from '../src/data/types';
@@ -7,6 +7,25 @@ import { waitForDOMStable } from './domStabilizer';
 import { saveCheckpoint, loadCheckpoint, clearCheckpoint } from './checkpointManager';
 import { framesToVideo, type FrameRecord } from './composite';
 
+let _chromium: typeof import('playwright-core').chromium | null = null;
+
+async function getChromium(): Promise<typeof import('playwright-core').chromium> {
+  if (_chromium) return _chromium;
+  const original = process.platform;
+  try {
+    if (original === 'android') {
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+    }
+    const pw = await import('playwright-core');
+    _chromium = pw.chromium;
+  } finally {
+    if (original === 'android') {
+      Object.defineProperty(process, 'platform', { value: original, configurable: true });
+    }
+  }
+  return _chromium;
+}
+
 export interface RecordingConfig {
   lesson: Lesson;
   timeline: AbsoluteTimeline;
@@ -14,6 +33,7 @@ export interface RecordingConfig {
   outputDir: string;
   resolution: { width: number; height: number };
   fps: number;
+  noSandbox?: boolean;
 }
 
 export interface RecordingResult {
@@ -138,13 +158,17 @@ export async function recordLesson(config: RecordingConfig): Promise<RecordingRe
 
   console.log(`[Recorder] Environment: ${termux ? 'Termux (Android)' : 'Desktop'}`);
 
+  const chromium = await getChromium();
   const browser = termux
     ? await chromium.launch({
         executablePath: getChromiumPath(),
         headless: true,
         args: ['--no-sandbox', '--disable-gpu'],
       })
-    : await chromium.launch({ headless: true });
+    : await chromium.launch({
+        headless: true,
+        ...(config.noSandbox ? { args: ['--no-sandbox', '--disable-gpu'] } : {}),
+      });
 
   let videoPath: string;
   let framesDir: string | undefined;

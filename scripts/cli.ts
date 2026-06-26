@@ -9,13 +9,15 @@ import { recordLesson } from './record-lesson';
 import { buildCompositeConfig, executeComposite } from './composite';
 import { verifyOutput } from './verifyOutput';
 
-interface CLIConfig {
+export interface CLIConfig {
   lesson: 'seed' | string;
   output: string;
   resolution: string;
   fps: number;
   voice: string;
   dryRun: boolean;
+  noSandbox: boolean;
+  ttsEnabled: boolean;
 }
 
 function parseArgs(args: string[]): CLIConfig {
@@ -26,6 +28,8 @@ function parseArgs(args: string[]): CLIConfig {
     fps: 30,
     voice: 'default',
     dryRun: false,
+    noSandbox: false,
+    ttsEnabled: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -47,6 +51,9 @@ function parseArgs(args: string[]): CLIConfig {
         break;
       case '--dry-run':
         config.dryRun = true;
+        break;
+      case '--no-sandbox':
+        config.noSandbox = true;
         break;
     }
   }
@@ -85,8 +92,7 @@ async function generateTimeline(lesson: Lesson, narration: LessonNarration): Pro
   return timeline;
 }
 
-async function main(): Promise<void> {
-  const cliConfig = parseArgs(process.argv.slice(2));
+export async function runPipeline(cliConfig: CLIConfig): Promise<void> {
   const resolution = parseResolution(cliConfig.resolution);
   const outputDir = path.dirname(cliConfig.output);
 
@@ -97,6 +103,7 @@ async function main(): Promise<void> {
     fps: cliConfig.fps,
     voice: cliConfig.voice,
     dryRun: cliConfig.dryRun,
+    noSandbox: cliConfig.noSandbox,
   });
 
   console.log('[CLI] Loading lesson...');
@@ -149,6 +156,7 @@ async function main(): Promise<void> {
     outputDir,
     resolution,
     fps: cliConfig.fps,
+    noSandbox: cliConfig.noSandbox,
   };
   const recordingResult = await recordLesson(recordingConfig);
   console.log(`[CLI] Recording saved: ${recordingResult.videoPath}`);
@@ -160,6 +168,7 @@ async function main(): Promise<void> {
     audioResult.segments,
     recordingResult.videoPath,
     cliConfig.output,
+    cliConfig.voice,
   );
   await executeComposite(compositeConfig);
 
@@ -171,6 +180,11 @@ async function main(): Promise<void> {
     console.error(`[CLI] Verification failed: ${verification.issues.join('; ')}`);
     process.exit(1);
   }
+}
+
+async function main(): Promise<void> {
+  const cliConfig = parseArgs(process.argv.slice(2));
+  await runPipeline(cliConfig);
 }
 
 main().catch((err) => {
