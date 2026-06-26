@@ -90,7 +90,7 @@ export async function buildCompositeConfig(
       }
     }
 
-    concatLines.push(`file '${wavPath}'`);
+    concatLines.push(`file '${wavName}'`);
   }
 
   const concatListPath = path.join(workDir, 'concat_list.txt');

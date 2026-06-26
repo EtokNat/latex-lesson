@@ -74,7 +74,9 @@ export function createGeminiProvider(): LLMFunction {
       throw new Error('[GeminiProvider] No candidates in response');
     }
 
-    const text = candidate.content?.parts?.[0]?.text || '';
+    let text = candidate.content?.parts?.[0]?.text || '';
+    // Strip markdown code fences that Gemini often wraps around JSON
+    text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
     console.log(`[GeminiProvider] Response: ${text.length} chars, finish: ${candidate.finishReason}`);
 
     return text;
