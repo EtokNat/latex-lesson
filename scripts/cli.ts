@@ -187,7 +187,16 @@ async function main(): Promise<void> {
   await runPipeline(cliConfig);
 }
 
-main().catch((err) => {
-  console.error('[CLI] Fatal error:', err);
-  process.exit(1);
-});
+import { fileURLToPath } from 'node:url';
+
+const isMainModule =
+  process.argv[1] === fileURLToPath(import.meta.url) ||
+  process.argv[1]?.endsWith('/cli.ts') ||
+  process.argv[1]?.endsWith('/cli.js');
+
+if (isMainModule) {
+  main().catch((err) => {
+    console.error('[CLI] Fatal error:', err);
+    process.exit(1);
+  });
+}
