@@ -47,7 +47,7 @@ jobs:
         run: npx playwright-core install chromium
 
       - name: Build frontend
-        run: npm run build
+        run: npx vite build
 
       - name: Run CI pipeline
         env:
