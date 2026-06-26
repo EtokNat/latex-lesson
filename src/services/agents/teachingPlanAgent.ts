@@ -68,30 +68,77 @@ ${blockList}
 For each block above, fill out the structured analysis. Focus especially on cross-references: use concept names from the knowledge graph that were introduced in EARLIER blocks.`;
 }
 
+const BATCH_SIZE = 5;
+
+function buildBatchPrompt(
+  lesson: Lesson,
+  kg: KnowledgeGraph,
+  batchIndex: number,
+  batchBlocks: LessonBlock[],
+  startIdx: number,
+): string {
+  const conceptList = formatConceptList(kg.concepts);
+  const blockList = formatBlocks(batchBlocks);
+
+  return `Lesson: "${lesson.title}"
+Lesson ID: ${lesson.id}
+
+KNOWLEDGE GRAPH CONCEPTS:
+${conceptList || '(none)'}
+
+LESSON BLOCKS (batch ${batchIndex + 1}, blocks ${startIdx}–${startIdx + batchBlocks.length - 1}):
+${blockList}
+
+For each block above, fill out the structured analysis. Focus especially on cross-references: use concept names from the knowledge graph that were introduced in EARLIER blocks.`;
+}
+
+async function generateBatchPlan(
+  lesson: Lesson,
+  kg: KnowledgeGraph,
+  batchIndex: number,
+  batchBlocks: LessonBlock[],
+  startIdx: number,
+): Promise<TeachingPlanItem[]> {
+  const userPrompt = buildBatchPrompt(lesson, kg, batchIndex, batchBlocks, startIdx);
+
+  const result = await generateCompletion(TEACHING_PLAN_SYSTEM_PROMPT, userPrompt, {
+    maxTokens: 4096,
+    temperature: 0.3,
+  });
+
+  const parsed = JSON.parse(result.text) as { items: TeachingPlanItem[] };
+
+  if (!parsed.items || !Array.isArray(parsed.items)) {
+    throw new Error(`Invalid teaching plan format in batch ${batchIndex} — missing items array`);
+  }
+
+  return parsed.items;
+}
+
 export async function generateTeachingPlan(
   lesson: Lesson,
   kg: KnowledgeGraph
 ): Promise<TeachingPlan> {
-  console.log('[TeachingPlanAgent] Generating plan for', lesson.blocks.length, 'blocks');
+  const totalBlocks = lesson.blocks.length;
+  console.log('[TeachingPlanAgent] Generating plan for', totalBlocks, 'blocks in batches of', BATCH_SIZE);
 
-  const userPrompt = buildTeachingPlanUserPrompt(lesson, kg);
+  const allItems: TeachingPlanItem[] = [];
 
-  try {
-    const result = await generateCompletion(TEACHING_PLAN_SYSTEM_PROMPT, userPrompt, {
-      maxTokens: 8192,
-      temperature: 0.3,
-    });
+  for (let i = 0; i < totalBlocks; i += BATCH_SIZE) {
+    const batch = lesson.blocks.slice(i, i + BATCH_SIZE);
+    const batchIndex = Math.floor(i / BATCH_SIZE);
+    console.log(`[TeachingPlanAgent] Batch ${batchIndex + 1}: blocks ${i}–${i + batch.length - 1}`);
 
-    const parsed = JSON.parse(result.text) as { items: TeachingPlanItem[] };
-
-    if (!parsed.items || !Array.isArray(parsed.items)) {
-      throw new Error('Invalid teaching plan format — missing items array');
+    try {
+      const items = await generateBatchPlan(lesson, kg, batchIndex, batch, i);
+      allItems.push(...items);
+      console.log(`[TeachingPlanAgent] Batch ${batchIndex + 1}: generated ${items.length} items`);
+    } catch (err) {
+      console.error(`[TeachingPlanAgent] Batch ${batchIndex + 1} failed:`, err);
+      throw err;
     }
-
-    console.log('[TeachingPlanAgent] Generated plan for', parsed.items.length, 'blocks');
-    return { lessonId: lesson.id, items: parsed.items };
-  } catch (err) {
-    console.error('[TeachingPlanAgent] Failed:', err);
-    throw err;
   }
+
+  console.log('[TeachingPlanAgent] Generated plan for', allItems.length, 'blocks total');
+  return { lessonId: lesson.id, items: allItems };
 }

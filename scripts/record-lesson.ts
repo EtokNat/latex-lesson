@@ -249,7 +249,7 @@ export async function recordLesson(config: RecordingConfig): Promise<RecordingRe
     if (!termux) {
       const pageVideo = page.video();
       if (pageVideo) {
-        const actualPath = pageVideo.path();
+        const actualPath = await pageVideo.path();
         console.log(`[Recorder] Playwright video path: ${actualPath}`);
         videoPath = actualPath;
       }

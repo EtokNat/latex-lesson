@@ -57,8 +57,9 @@ describe('teachingPlanAgent', () => {
     vi.clearAllMocks();
   });
 
-  it('generates plan for a lesson with mocked LLM', async () => {
-    mockedGenerateCompletion.mockResolvedValueOnce({
+  it('generates plan for a lesson with mocked LLM (batched)', async () => {
+    // SEED_LESSON has 38 blocks / 5 = 8 batches — use mockResolvedValue for all calls
+    mockedGenerateCompletion.mockResolvedValue({
       text: JSON.stringify(mockTeachingPlanResponse),
       promptTokens: 500,
       completionTokens: 300,
@@ -73,13 +74,6 @@ describe('teachingPlanAgent', () => {
   });
 
   it('handles empty lesson', async () => {
-    mockedGenerateCompletion.mockResolvedValueOnce({
-      text: JSON.stringify({ items: [] }),
-      promptTokens: 100,
-      completionTokens: 20,
-      estimatedCost: 0.001,
-    });
-
     const plan = await generateTeachingPlan(
       { id: 'empty', title: 'Empty', blocks: [] },
       { concepts: new Map(), edges: [] }
@@ -88,7 +82,7 @@ describe('teachingPlanAgent', () => {
   });
 
   it('handles lesson with only headings', async () => {
-    mockedGenerateCompletion.mockResolvedValueOnce({
+    mockedGenerateCompletion.mockResolvedValue({
       text: JSON.stringify({
         items: [
           { blockId: 'h1', concept: 'Topic overview', priorKnowledge: 'None', analogy: 'Like a map', anticipatedConfusion: 'Scope might be unclear', emotionalBeat: 'curious', bridge: 'Next section', crossReferences: [] },
