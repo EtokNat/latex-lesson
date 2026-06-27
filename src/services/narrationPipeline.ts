@@ -93,53 +93,111 @@ export async function runNarrationPipeline(lesson: Lesson): Promise<PipelineResu
     }
   }
 
-  // Step 6: Generate narration + validate (with retry loop)
+  // Step 6: Generate narration + validate (with targeted correction retries)
   progress.push({ step: 'narration', detail: 'Generating narration script' });
-  let narration: LessonNarration;
-  let validationReport: ValidationReport;
   let totalRetries = 0;
 
-  narration = await generateNarrationScript({
+  let narration = await generateNarrationScript({
     lesson,
     teachingPlan,
     visionDescriptions,
     relevanceReports,
   });
 
-  validationReport = validateNarration(narration, lesson, kg, ledger);
+  let validationReport = validateNarration(narration, lesson, kg, ledger);
+
+  // Track best attempt for fallback on exhaustion
+  let bestNarration = narration;
+  let bestReport = validationReport;
 
   while (!validationReport.pass && totalRetries < MAX_RETRIES) {
+    const criticalViolations = validationReport.violations.filter(v => v.severity === 'CRITICAL');
     const criticalBlocks = collectCriticalBlockIds(validationReport);
+
     console.log(
       '[NarrationPipeline] Retry',
       totalRetries + 1,
-      '— regenerating narration for blocks:',
+      `— ${criticalViolations.length} critical violations in blocks:`,
       criticalBlocks
     );
 
+    // Build targeted correction prompt from specific violations
+    const violationFeedback = criticalViolations
+      .map(v => `- Block ${v.blockId}: [${v.type}] ${v.message} — ${v.details}`)
+      .join('\n');
+
+    const correctionPrompt = `CORRECTION REQUIRED — The previous narration had these critical issues:
+
+${violationFeedback}
+
+FIX THESE BLOCKS ONLY: ${criticalBlocks.join(', ')}
+
+RULES FOR CORRECTION:
+1. Regenerate ONLY the narration segments for the blocks listed above. Leave all other blocks unchanged.
+2. For each violation listed, apply the specific fix:
+   - VERBATIM_READING: Rewrite the segment to EXPLAIN the content rather than reading it aloud. Use deictic language ("this expression", "right here").
+   - QUANTITATIVE_MISMATCH: Re-count and match the numerical claim to what the on-screen content actually says.
+3. Keep the audioTag variety and emotional flow from the original for corrected blocks.
+4. Return the FULL narration (all blocks) — corrected blocks with fixes applied, all other blocks exactly as before.`;
+
     totalRetries++;
-    narration = await generateNarrationScript({
-      lesson,
-      teachingPlan,
-      visionDescriptions,
-      relevanceReports,
-    });
+    try {
+      narration = await generateNarrationScript({
+        lesson,
+        teachingPlan,
+        visionDescriptions,
+        relevanceReports,
+        correctionPrompt,
+      });
+    } catch (err) {
+      console.warn('[NarrationPipeline] Correction attempt', totalRetries, 'failed:', err);
+      // Keep previous narration, will fall through to best-attempt logic
+      break;
+    }
+
+    // Guard against null/undefined narration from LLM
+    if (!narration?.blockNarrations?.length) {
+      console.warn('[NarrationPipeline] Correction returned empty narration, keeping previous');
+      break;
+    }
+
     validationReport = validateNarration(narration, lesson, kg, ledger);
+
+    // Track best attempt
+    if (validationReport.criticalCount < bestReport.criticalCount) {
+      bestNarration = narration;
+      bestReport = validationReport;
+    }
+  }
+
+  // Use best attempt if current is worse
+  if (validationReport.criticalCount > bestReport.criticalCount) {
+    console.log(
+      '[NarrationPipeline] Falling back to best attempt:',
+      bestReport.criticalCount,
+      'critical (vs',
+      validationReport.criticalCount,
+      'current)'
+    );
+    narration = bestNarration;
+    validationReport = bestReport;
   }
 
   if (!validationReport.pass) {
     console.warn(
-      '[NarrationPipeline] Still has',
+      '[NarrationPipeline] Best attempt has',
       validationReport.criticalCount,
-      'critical violations after',
-      MAX_RETRIES,
-      'retries'
+      'critical,',
+      validationReport.warningCount,
+      'warnings after',
+      totalRetries,
+      'retries — proceeding with best available'
     );
   }
 
   console.log(
     '[NarrationPipeline] Pipeline complete:',
-    lesson.blocks.length,
+    narration.blockNarrations?.length || 0,
     'blocks narrated,',
     totalRetries,
     'retries needed'

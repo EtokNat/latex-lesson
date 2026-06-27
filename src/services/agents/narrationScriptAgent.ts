@@ -10,6 +10,7 @@ export interface NarrationAgentInput {
   teachingPlan: TeachingPlan;
   visionDescriptions: Map<string, VisionDescription>;
   relevanceReports: Map<string, RelevanceReport>;
+  correctionPrompt?: string;
 }
 
 const NARRATION_SYSTEM_PROMPT = `You are writing the spoken narration for a math teaching video.
@@ -147,12 +148,19 @@ export async function generateNarrationScript(input: NarrationAgentInput): Promi
     .map((block, i) => buildBlockContext(block, i, input))
     .join('\n\n');
 
-  const userPrompt = `Lesson: "${input.lesson.title}"
+  let userPrompt = `Lesson: "${input.lesson.title}"
 Lesson ID: ${input.lesson.id}
 
 ${blocksContext}
 
 Generate the complete narration script for this lesson. Follow the output format exactly.`;
+
+  if (input.correctionPrompt) {
+    userPrompt = `${input.correctionPrompt}
+
+---
+${userPrompt}`;
+  }
 
 const NARRATION_SCHEMA = {
   type: 'object',

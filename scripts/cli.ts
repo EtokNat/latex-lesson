@@ -130,8 +130,9 @@ export async function runPipeline(cliConfig: CLIConfig): Promise<void> {
   let narration: LessonNarration;
   try {
     const { runNarrationPipeline } = await import('../src/services/narrationPipeline');
-    narration = await runNarrationPipeline(lesson);
-    console.log(`[CLI] Narration generated: ${narration.blockNarrations.length} blocks`);
+    const pipelineResult = await runNarrationPipeline(lesson);
+    narration = pipelineResult.narration;
+    console.log(`[CLI] Narration generated: ${narration.blockNarrations.length} blocks (${pipelineResult.totalRetries} retries)`);
   } catch (err) {
     console.error(`[CLI] Narration pipeline failed: ${err}`);
     console.log('[CLI] Falling back to empty narration');
