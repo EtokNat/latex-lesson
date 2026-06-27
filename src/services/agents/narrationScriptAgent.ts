@@ -24,9 +24,8 @@ CRITICAL RULES:
 5. Anticipate confusion — address it directly
 6. Vary sentence length. Short for emphasis. Long for explanation.
 7. Cross-reference 2-3 earlier concepts per block (from the provided knowledge graph report)
-8. Place {REVEAL} markers at natural teaching moments where the next piece of content should appear
-9. Use {SOCRATIC} markers for questions the learner should think about
-10. Use {PAUSE:N} markers for dramatic or thinking pauses (N in seconds, e.g. {PAUSE:1.5})
+8. Use {SOCRATIC} markers for questions the learner should think about
+9. Use {PAUSE:N} markers for dramatic or thinking pauses (N in seconds, e.g. {PAUSE:1.5})
 
 OUTPUT FORMAT — valid JSON:
 {
@@ -95,11 +94,6 @@ function buildBlockContext(block: LessonBlock, index: number, input: NarrationAg
   parts.push(plan);
   parts.push(`Cross-reference these concepts:\n${relevance}`);
 
-  if (block.type === 'math') {
-    parts.push(
-      'NOTE: This is a math block with progressive reveal steps. Place {REVEAL} markers between key steps so the student sees each step appear as you explain it.'
-    );
-  }
 
   return parts.join('\n\n');
 }

@@ -13,6 +13,7 @@ import { analyzeImage } from './agents/visionAgent';
 import { queryRelevance } from './relevanceQuery';
 import { generateNarrationScript } from './agents/narrationScriptAgent';
 import { validateNarration } from './agents/validationAgent';
+import { injectRevealTriggers } from './revealInjector';
 
 export interface PipelineProgress {
   step: string;
@@ -103,6 +104,7 @@ export async function runNarrationPipeline(lesson: Lesson): Promise<PipelineResu
     visionDescriptions,
     relevanceReports,
   });
+  injectRevealTriggers(narration, lesson);
 
   let validationReport = validateNarration(narration, lesson, kg, ledger);
 
@@ -149,6 +151,7 @@ RULES FOR CORRECTION:
         relevanceReports,
         correctionPrompt,
       });
+      injectRevealTriggers(narration, lesson);
     } catch (err) {
       console.warn('[NarrationPipeline] Correction attempt', totalRetries, 'failed:', err);
       // Keep previous narration, will fall through to best-attempt logic
