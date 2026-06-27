@@ -26,6 +26,15 @@ const DEFAULT_MODEL = 'claude-sonnet-4-6';
 const MAX_RETRIES = 5;
 const BASE_DELAY_MS = 4000;
 
+// Model-specific rate limits
+const PAID_MODELS = new Set(['claude-opus-4-7']); // maps to gemini-2.5-flash
+const FREE_GAP_MS = 1000; // Gemma 4 — no RPM limit, just be polite
+const PAID_GAP_MS = 30000; // gemini-2.5-flash — 20 RPM free tier
+
+function getMinGapMs(model: string): number {
+  return PAID_MODELS.has(model) ? PAID_GAP_MS : FREE_GAP_MS;
+}
+
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
@@ -79,9 +88,10 @@ export async function generateCompletion(
 
       const now = Date.now();
       const timeSinceLastCall = now - lastCallTime;
-      if (timeSinceLastCall < MIN_CALL_GAP_MS) {
-        const waitMs = MIN_CALL_GAP_MS - timeSinceLastCall;
-        console.log('[LLMClient] Rate limiting: waiting', waitMs, 'ms');
+      const minGap = getMinGapMs(model);
+      if (timeSinceLastCall < minGap) {
+        const waitMs = minGap - timeSinceLastCall;
+        console.log('[LLMClient] Rate limiting:', model, '— waiting', waitMs, 'ms');
         await new Promise((r) => setTimeout(r, waitMs));
       }
       lastCallTime = Date.now();

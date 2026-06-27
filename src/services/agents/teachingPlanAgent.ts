@@ -124,9 +124,12 @@ async function generateBatchPlan(
   startIdx: number,
   retryCount = 0,
 ): Promise<TeachingPlanItem[]> {
+  const isRetry = retryCount > 0;
+  const usePaid = isRetry; // first retry already failed on free — use paid model
   const userPrompt = buildBatchPrompt(lesson, kg, batchIndex, batchBlocks, startIdx);
 
   const result = await generateCompletion(TEACHING_PLAN_SYSTEM_PROMPT, userPrompt, {
+    model: usePaid ? 'claude-opus-4-7' : undefined, // gemini-2.5-flash for retries
     maxTokens: 8192,
     temperature: 0.3,
     responseSchema: TEACHING_PLAN_SCHEMA,
@@ -139,14 +142,20 @@ async function generateBatchPlan(
       throw new Error(`Invalid teaching plan format in batch ${batchIndex} — missing items array`);
     }
 
+    if (usePaid) {
+      console.log(`[TeachingPlanAgent] Batch ${batchIndex}: paid fallback succeeded`);
+    }
+
     return parsed.items;
   } catch (parseErr) {
-    if (retryCount < 2) {
+    if (retryCount < 1) {
       console.warn(
-        `[TeachingPlanAgent] Batch ${batchIndex} JSON parse failed (attempt ${retryCount + 1}), retrying...`,
+        `[TeachingPlanAgent] Batch ${batchIndex} Gemma 4 failed, retrying with gemini-2.5-flash...`,
       );
       return generateBatchPlan(lesson, kg, batchIndex, batchBlocks, startIdx, retryCount + 1);
     }
+    // Paid fallback also failed — this should be extremely rare
+    console.error(`[TeachingPlanAgent] Batch ${batchIndex} paid fallback also failed`);
     throw parseErr;
   }
 }
