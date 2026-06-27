@@ -5,17 +5,21 @@ const DEFAULT_MODEL = 'gemma-4-31b-it';
 
 const MODEL_MAP: Record<string, string> = {
   'claude-sonnet-4-6': 'gemma-4-31b-it',
-  'claude-opus-4-7': 'gemini-2.5-flash', // Gemini for structured JSON output
+  'claude-opus-4-7': 'gemini-2.5-flash', // Paid — structured JSON enforcement
   'gpt-4o': 'gemini-2.5-flash',
 };
 
+const PAID_GEMINI_MODELS = new Set(['gemini-2.5-flash']);
+
 export function createGeminiProvider(): LLMFunction {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const freeKey = process.env.GEMINI_API_KEY;
+  const proKey = process.env.PRO_GEMINI_API_KEY;
+
+  if (!freeKey) {
     throw new Error('[GeminiProvider] GEMINI_API_KEY environment variable is not set');
   }
 
-  console.log('[GeminiProvider] Initialized with Gemini API');
+  console.log('[GeminiProvider] Initialized — free key:', freeKey ? 'set' : 'missing', '| pro key:', proKey ? 'set' : 'missing');
 
   return async function geminiCall(
     systemPrompt: string,
@@ -23,6 +27,9 @@ export function createGeminiProvider(): LLMFunction {
     options?: LLMOptions,
   ): Promise<string> {
     const modelName = MODEL_MAP[options?.model || 'claude-sonnet-4-6'] || DEFAULT_MODEL;
+    const isPaid = PAID_GEMINI_MODELS.has(modelName);
+    const apiKey = isPaid ? (proKey || freeKey) : freeKey;
+    const keyLabel = isPaid ? 'pro' : 'free';
     const url = `${API_BASE}/${modelName}:generateContent?key=${apiKey}`;
 
     const contents: Record<string, unknown>[] = [];
@@ -55,7 +62,7 @@ export function createGeminiProvider(): LLMFunction {
       generationConfig,
     };
 
-    console.log(`[GeminiProvider] Calling ${modelName} (maxTokens: ${options?.maxTokens || 4096})`);
+    console.log(`[GeminiProvider] Calling ${modelName} (${keyLabel}, maxTokens: ${options?.maxTokens || 4096})`);
 
     const response = await fetch(url, {
       method: 'POST',
