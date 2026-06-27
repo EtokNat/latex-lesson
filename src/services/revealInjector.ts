@@ -1,6 +1,6 @@
 import type { LessonBlock } from '../data/types';
 import type { LessonNarration } from '../data/narrationTypes';
-import { smartSplitLines, parseEquation, totalReveal } from '../components/ProgressiveAlignedEquation';
+import { smartSplitLines, parseEquation, totalReveal } from './equationParser';
 
 export function computeMaxReveal(block: LessonBlock): number {
   if (block.type !== 'math') return 1;
