@@ -154,11 +154,47 @@ ${blocksContext}
 
 Generate the complete narration script for this lesson. Follow the output format exactly.`;
 
+const NARRATION_SCHEMA = {
+  type: 'object',
+  properties: {
+    blockNarrations: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          blockId: { type: 'string' },
+          segments: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' },
+                audioTag: { type: 'string', enum: ['excited', 'warmly', 'measured', 'encouraging', 'authoritatively', 'calm', 'curious', 'bright', 'patiently', 'reassuring', 'seriously', 'firmly'] },
+                revealTrigger: { type: 'boolean' },
+                pauseAfterMs: { type: 'number' },
+                socraticPause: { type: 'number' },
+              },
+              required: ['text'],
+            },
+          },
+        },
+        required: ['blockId', 'segments'],
+      },
+    },
+    interBlockPausesMs: {
+      type: 'array',
+      items: { type: 'number' },
+    },
+  },
+  required: ['blockNarrations'],
+};
+
   try {
     const result = await generateCompletion(NARRATION_SYSTEM_PROMPT, userPrompt, {
       model: 'claude-opus-4-7', // gemini-2.5-flash for reliable JSON
       maxTokens: 8192,
       temperature: 0.7,
+      responseSchema: NARRATION_SCHEMA,
     });
 
     const parsed = JSON.parse(result.text) as {
