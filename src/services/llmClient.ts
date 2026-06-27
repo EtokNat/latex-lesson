@@ -18,10 +18,12 @@ export type LLMFunction = (
 ) => Promise<string>;
 
 let callLLM: LLMFunction | null = null;
+let lastCallTime = 0;
+const MIN_CALL_GAP_MS = 7000; // ~8.5 RPM, safe under Gemini free tier 10 RPM limit
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000;
+const MAX_RETRIES = 5;
+const BASE_DELAY_MS = 2000;
 
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -61,6 +63,16 @@ export async function generateCompletion(
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       console.log('[LLMClient] Attempt', attempt, 'of', MAX_RETRIES);
+
+      // Rate limit: ensure minimum gap between API calls (Gemini free tier: 10 RPM)
+      const now = Date.now();
+      const timeSinceLastCall = now - lastCallTime;
+      if (timeSinceLastCall < MIN_CALL_GAP_MS) {
+        const waitMs = MIN_CALL_GAP_MS - timeSinceLastCall;
+        console.log('[LLMClient] Rate limiting: waiting', waitMs, 'ms');
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+      lastCallTime = Date.now();
 
       const text = await callLLM(systemPrompt, userPrompt, {
         model,

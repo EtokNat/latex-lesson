@@ -57,7 +57,7 @@ describe('teachingPlanAgent', () => {
     vi.clearAllMocks();
   });
 
-  it('generates plan for a lesson with mocked LLM (batched)', async () => {
+  it('generates plan for a lesson with mocked LLM (batched)', { timeout: 30000 }, async () => {
     // SEED_LESSON has 38 blocks / 5 = 8 batches — use mockResolvedValue for all calls
     mockedGenerateCompletion.mockResolvedValue({
       text: JSON.stringify(mockTeachingPlanResponse),

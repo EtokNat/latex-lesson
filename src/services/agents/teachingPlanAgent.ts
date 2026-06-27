@@ -68,7 +68,7 @@ ${blockList}
 For each block above, fill out the structured analysis. Focus especially on cross-references: use concept names from the knowledge graph that were introduced in EARLIER blocks.`;
 }
 
-const BATCH_SIZE = 3;
+const BATCH_SIZE = 5;
 
 function buildBatchPrompt(
   lesson: Lesson,
