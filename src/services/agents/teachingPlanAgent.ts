@@ -68,7 +68,7 @@ ${blockList}
 For each block above, fill out the structured analysis. Focus especially on cross-references: use concept names from the knowledge graph that were introduced in EARLIER blocks.`;
 }
 
-const BATCH_SIZE = 5;
+const BATCH_SIZE = 3;
 
 function buildBatchPrompt(
   lesson: Lesson,
@@ -98,6 +98,7 @@ async function generateBatchPlan(
   batchIndex: number,
   batchBlocks: LessonBlock[],
   startIdx: number,
+  retryCount = 0,
 ): Promise<TeachingPlanItem[]> {
   const userPrompt = buildBatchPrompt(lesson, kg, batchIndex, batchBlocks, startIdx);
 
@@ -106,13 +107,23 @@ async function generateBatchPlan(
     temperature: 0.3,
   });
 
-  const parsed = JSON.parse(result.text) as { items: TeachingPlanItem[] };
+  try {
+    const parsed = JSON.parse(result.text) as { items: TeachingPlanItem[] };
 
-  if (!parsed.items || !Array.isArray(parsed.items)) {
-    throw new Error(`Invalid teaching plan format in batch ${batchIndex} — missing items array`);
+    if (!parsed.items || !Array.isArray(parsed.items)) {
+      throw new Error(`Invalid teaching plan format in batch ${batchIndex} — missing items array`);
+    }
+
+    return parsed.items;
+  } catch (parseErr) {
+    if (retryCount < 2) {
+      console.warn(
+        `[TeachingPlanAgent] Batch ${batchIndex} JSON parse failed (attempt ${retryCount + 1}), retrying...`,
+      );
+      return generateBatchPlan(lesson, kg, batchIndex, batchBlocks, startIdx, retryCount + 1);
+    }
+    throw parseErr;
   }
-
-  return parsed.items;
 }
 
 export async function generateTeachingPlan(

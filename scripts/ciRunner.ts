@@ -54,6 +54,7 @@ async function startServer(port: number): Promise<ChildProcess> {
   const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--host'], {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env },
+    detached: true,
   });
 
   let serverOutput = '';
@@ -95,10 +96,18 @@ async function startServer(port: number): Promise<ChildProcess> {
 
 function killServer(server: ChildProcess): void {
   try {
-    server.kill('SIGTERM');
-    console.log('[CIRunner] Server stopped');
+    if (server.pid) {
+      // Kill entire process group (negative PID = process group)
+      process.kill(-server.pid, 'SIGKILL');
+      console.log('[CIRunner] Server process group killed');
+    }
   } catch {
-    // already dead
+    try {
+      server.kill('SIGKILL');
+      console.log('[CIRunner] Server killed (fallback)');
+    } catch {
+      // already dead
+    }
   }
 }
 

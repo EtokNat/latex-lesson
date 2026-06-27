@@ -104,7 +104,7 @@ describe('teachingPlanAgent', () => {
   });
 
   it('throws on invalid LLM response format', async () => {
-    mockedGenerateCompletion.mockResolvedValueOnce({
+    mockedGenerateCompletion.mockResolvedValue({
       text: JSON.stringify({ wrongField: [] }),
       promptTokens: 100,
       completionTokens: 10,
