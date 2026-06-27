@@ -56,6 +56,7 @@ export async function analyzeImage(
   try {
     const userPrompt = buildVisionUserPrompt(block, surroundingContext);
     const result = await generateCompletion(VISION_SYSTEM_PROMPT, userPrompt, {
+      model: 'claude-opus-4-7', // gemini-2.5-flash for reliable JSON
       maxTokens: 1024,
       temperature: 0.4,
     });

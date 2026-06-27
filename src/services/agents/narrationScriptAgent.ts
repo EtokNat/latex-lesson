@@ -156,6 +156,7 @@ Generate the complete narration script for this lesson. Follow the output format
 
   try {
     const result = await generateCompletion(NARRATION_SYSTEM_PROMPT, userPrompt, {
+      model: 'claude-opus-4-7', // gemini-2.5-flash for reliable JSON
       maxTokens: 8192,
       temperature: 0.7,
     });

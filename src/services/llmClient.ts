@@ -20,7 +20,7 @@ export type LLMFunction = (
 
 let callLLM: LLMFunction | null = null;
 let lastCallTime = 0;
-const MIN_CALL_GAP_MS = 10000; // ~6 RPM — safe for all Gemini free tier quotas
+const MIN_CALL_GAP_MS = 30000; // 2 RPM — deep safety margin under all Gemini free tier limits
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
 const MAX_RETRIES = 5;
