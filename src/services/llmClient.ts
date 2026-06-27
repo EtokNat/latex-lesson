@@ -20,11 +20,11 @@ export type LLMFunction = (
 
 let callLLM: LLMFunction | null = null;
 let lastCallTime = 0;
-const MIN_CALL_GAP_MS = 4000; // ~15 RPM for Gemma 4 free tier
+const MIN_CALL_GAP_MS = 10000; // ~6 RPM — safe for all Gemini free tier quotas
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
 const MAX_RETRIES = 5;
-const BASE_DELAY_MS = 2000;
+const BASE_DELAY_MS = 4000;
 
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -38,6 +38,18 @@ function estimateCost(model: string, promptTokens: number, completionTokens: num
   };
   const rate = rates[model] || rates['claude-sonnet-4-6'];
   return promptTokens * rate.input + completionTokens * rate.output;
+}
+
+function parseRetryAfterSeconds(errorMessage: string): number | null {
+  const match = errorMessage.match(/retry in ([\d.]+)s/i);
+  if (match) {
+    return parseFloat(match[1]);
+  }
+  return null;
+}
+
+function isRateLimitError(errorMessage: string): boolean {
+  return errorMessage.includes('429') || errorMessage.includes('Quota exceeded');
 }
 
 export function configureLLMClient(llmFn: LLMFunction): void {
@@ -65,7 +77,6 @@ export async function generateCompletion(
     try {
       console.log('[LLMClient] Attempt', attempt, 'of', MAX_RETRIES);
 
-      // Rate limit: ensure minimum gap between API calls (Gemini free tier: 10 RPM)
       const now = Date.now();
       const timeSinceLastCall = now - lastCallTime;
       if (timeSinceLastCall < MIN_CALL_GAP_MS) {
@@ -79,6 +90,7 @@ export async function generateCompletion(
         model,
         maxTokens: options?.maxTokens,
         temperature: options?.temperature,
+        responseSchema: options?.responseSchema,
       });
 
       const promptTokens = estimateTokens(systemPrompt) + estimateTokens(userPrompt);
@@ -98,11 +110,27 @@ export async function generateCompletion(
       return { text, promptTokens, completionTokens, estimatedCost };
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      console.warn('[LLMClient] Attempt', attempt, 'failed:', lastError.message);
+      const errMsg = lastError.message;
+      console.warn('[LLMClient] Attempt', attempt, 'failed:', errMsg);
 
       if (attempt < MAX_RETRIES) {
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
-        console.log('[LLMClient] Retrying in', delay, 'ms');
+        let delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+
+        if (isRateLimitError(errMsg)) {
+          const retryAfter = parseRetryAfterSeconds(errMsg);
+          if (retryAfter !== null) {
+            // Wait the API-specified duration + 2s buffer
+            const apiDelay = (retryAfter + 2) * 1000;
+            delay = Math.max(delay, apiDelay);
+            console.log('[LLMClient] Rate limited — API says retry in', retryAfter, 's, waiting', Math.round(delay / 1000), 's');
+          } else {
+            // No explicit retry-after, use aggressive backoff for 429
+            delay = Math.max(delay, 15_000);
+            console.log('[LLMClient] Rate limited — waiting', Math.round(delay / 1000), 's');
+          }
+        }
+
+        console.log('[LLMClient] Retrying in', Math.round(delay / 1000), 's');
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
