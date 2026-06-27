@@ -127,6 +127,7 @@ async function generateBatchPlan(
   const userPrompt = buildBatchPrompt(lesson, kg, batchIndex, batchBlocks, startIdx);
 
   const result = await generateCompletion(TEACHING_PLAN_SYSTEM_PROMPT, userPrompt, {
+    model: 'claude-opus-4-7', // maps to gemini-2.5-pro for reliable JSON
     maxTokens: 4096,
     temperature: 0.3,
     responseSchema: TEACHING_PLAN_SCHEMA,

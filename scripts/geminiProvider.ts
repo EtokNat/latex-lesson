@@ -5,7 +5,7 @@ const DEFAULT_MODEL = 'gemma-4-31b-it';
 
 const MODEL_MAP: Record<string, string> = {
   'claude-sonnet-4-6': 'gemma-4-31b-it',
-  'claude-opus-4-7': 'gemma-4-31b-it',
+  'claude-opus-4-7': 'gemini-2.5-flash', // Gemini for structured JSON output
   'gpt-4o': 'gemini-2.5-flash',
 };
 
