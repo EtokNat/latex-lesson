@@ -28,7 +28,7 @@ const BASE_DELAY_MS = 4000;
 
 // Model-specific rate limits
 const PAID_MODELS = new Set(['claude-opus-4-7']); // maps to gemini-2.5-flash
-const FREE_GAP_MS = 1000; // Gemma 4 — no RPM limit, just be polite
+const FREE_GAP_MS = 2000; // Gemma 4 — no RPM limit, 2s avoids 500 errors at scale
 const PAID_GAP_MS = 30000; // gemini-2.5-flash — 20 RPM free tier
 
 function getMinGapMs(model: string): number {
