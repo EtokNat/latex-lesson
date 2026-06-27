@@ -46,6 +46,7 @@ export function createGeminiProvider(): LLMFunction {
       generationConfig: {
         maxOutputTokens: options?.maxTokens || 4096,
         temperature: options?.temperature ?? 0.5,
+        responseMimeType: 'application/json',
       },
     };
 
@@ -75,8 +76,13 @@ export function createGeminiProvider(): LLMFunction {
     }
 
     let text = candidate.content?.parts?.[0]?.text || '';
-    // Strip markdown code fences that Gemini often wraps around JSON
+    // Strip markdown code fences
     text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+    // Extract JSON object from response (Gemma sometimes prefaces with text)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      text = jsonMatch[0];
+    }
     console.log(`[GeminiProvider] Response: ${text.length} chars, finish: ${candidate.finishReason}`);
 
     return text;
