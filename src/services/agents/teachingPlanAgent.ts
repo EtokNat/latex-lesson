@@ -32,6 +32,30 @@ function formatBlocks(blocks: LessonBlock[]): string {
     .join('\n---\n');
 }
 
+const TEACHING_PLAN_SCHEMA = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          blockId: { type: 'string' },
+          concept: { type: 'string' },
+          priorKnowledge: { type: 'string' },
+          analogy: { type: 'string' },
+          anticipatedConfusion: { type: 'string' },
+          emotionalBeat: { type: 'string' },
+          bridge: { type: 'string' },
+          crossReferences: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['blockId', 'concept', 'priorKnowledge', 'analogy', 'anticipatedConfusion', 'emotionalBeat', 'bridge', 'crossReferences'],
+      },
+    },
+  },
+  required: ['items'],
+};
+
 const TEACHING_PLAN_SYSTEM_PROMPT = `You are an expert math teacher with 20 years of classroom experience.
 For each block in this lesson, produce a structured analysis. Output valid JSON in this exact format:
 
@@ -105,6 +129,7 @@ async function generateBatchPlan(
   const result = await generateCompletion(TEACHING_PLAN_SYSTEM_PROMPT, userPrompt, {
     maxTokens: 4096,
     temperature: 0.3,
+    responseSchema: TEACHING_PLAN_SCHEMA,
   });
 
   try {

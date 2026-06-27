@@ -2,6 +2,7 @@ export interface LLMOptions {
   model?: string;
   maxTokens?: number;
   temperature?: number;
+  responseSchema?: Record<string, unknown>;
 }
 
 export interface LLMCallResult {

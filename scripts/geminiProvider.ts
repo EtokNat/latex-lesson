@@ -41,13 +41,18 @@ export function createGeminiProvider(): LLMFunction {
       parts: [{ text: userPrompt }],
     });
 
+    const generationConfig: Record<string, unknown> = {
+      maxOutputTokens: options?.maxTokens || 4096,
+      temperature: options?.temperature ?? 0.5,
+      response_mime_type: 'application/json',
+    };
+    if (options?.responseSchema) {
+      generationConfig.responseJsonSchema = options.responseSchema;
+    }
+
     const body = {
       contents,
-      generationConfig: {
-        maxOutputTokens: options?.maxTokens || 4096,
-        temperature: options?.temperature ?? 0.5,
-        responseMimeType: 'application/json',
-      },
+      generationConfig,
     };
 
     console.log(`[GeminiProvider] Calling ${modelName} (maxTokens: ${options?.maxTokens || 4096})`);
