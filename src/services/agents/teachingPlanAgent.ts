@@ -92,7 +92,7 @@ ${blockList}
 For each block above, fill out the structured analysis. Focus especially on cross-references: use concept names from the knowledge graph that were introduced in EARLIER blocks.`;
 }
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 5;
 
 function buildBatchPrompt(
   lesson: Lesson,
@@ -128,7 +128,7 @@ async function generateBatchPlan(
 
   const result = await generateCompletion(TEACHING_PLAN_SYSTEM_PROMPT, userPrompt, {
     model: 'claude-opus-4-7', // gemini-2.5-flash for responseJsonSchema
-    maxTokens: 4096,
+    maxTokens: 8192,
     temperature: 0.3,
     responseSchema: TEACHING_PLAN_SCHEMA,
   });
