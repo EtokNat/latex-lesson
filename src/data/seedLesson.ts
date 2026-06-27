@@ -28,7 +28,7 @@ export const SEED_LESSON: Lesson = {
       content:
         'A parabola opening upward (a > 0) and downward (a < 0), showing how the sign of a affects the shape',
       imageUrl:
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Polynomialdeg2.svg/640px-Polynomialdeg2.svg.png',
+        'https://image-v2.cdn.app.senecalearning.com/2018-03/633b8eef-48f5-4ec5-9b03-060489287415/Screen%20Shot%202018-03-22%20at%2015.36.24,h_400,q_80,w_640.png',
     },
     {
       id: 'seed-5',
@@ -73,7 +73,7 @@ export const SEED_LESSON: Lesson = {
       content:
         'Visual representation of factoring x^2 + 7x + 12 as (x+3)(x+4) using an area model',
       imageUrl:
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Binomial_theorem_visualisation.svg/640px-Binomial_theorem_visualisation.svg.png',
+        'https://image-v2.cdn.app.senecalearning.com/2018-03/633b8eef-48f5-4ec5-9b03-060489287415/Screen%20Shot%202018-03-22%20at%2015.36.24,h_400,q_80,w_640.png',
     },
 
     // ========== SECTION 3: COMPLETING THE SQUARE ==========
@@ -137,7 +137,7 @@ export const SEED_LESSON: Lesson = {
       content:
         'Graph of y = 2x^2 - 4x - 6 showing roots at x = 3 and x = -1 with the vertex at (1, -8)',
       imageUrl:
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Quadratic_function_graph_key_values.svg/640px-Quadratic_function_graph_key_values.svg.png',
+        'https://image-v2.cdn.app.senecalearning.com/2018-03/633b8eef-48f5-4ec5-9b03-060489287415/Screen%20Shot%202018-03-22%20at%2015.36.24,h_400,q_80,w_640.png',
     },
 
     // ========== SECTION 5: THE DISCRIMINANT ==========
@@ -182,7 +182,7 @@ export const SEED_LESSON: Lesson = {
       content:
         'Three parabolas comparing discriminant cases: two roots, one double root, and no real roots',
       imageUrl:
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Quadratic_roots.svg/640px-Quadratic_roots.svg.png',
+        'https://image-v2.cdn.app.senecalearning.com/2018-03/633b8eef-48f5-4ec5-9b03-060489287415/Screen%20Shot%202018-03-22%20at%2015.36.24,h_400,q_80,w_640.png',
     },
 
     // ========== SECTION 6: WORKED EXAMPLE ==========
@@ -247,7 +247,7 @@ export const SEED_LESSON: Lesson = {
       content:
         'Summary mind map: the three solution methods branching from the quadratic equation',
       imageUrl:
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Quadratic_equation_on_blackboard.jpg/640px-Quadratic_equation_on_blackboard.jpg',
+        'https://image-v2.cdn.app.senecalearning.com/2018-03/633b8eef-48f5-4ec5-9b03-060489287415/Screen%20Shot%202018-03-22%20at%2015.36.24,h_400,q_80,w_640.png',
     },
   ],
 };
