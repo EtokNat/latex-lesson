@@ -1,11 +1,11 @@
 import type { LLMFunction, LLMOptions } from '../src/services/llmClient';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemma-4-31b';
 
 const MODEL_MAP: Record<string, string> = {
-  'claude-sonnet-4-6': 'gemini-2.5-flash',
-  'claude-opus-4-7': 'gemini-2.5-pro',
+  'claude-sonnet-4-6': 'gemma-4-31b',
+  'claude-opus-4-7': 'gemma-4-31b',
   'gpt-4o': 'gemini-2.5-flash',
 };
 
